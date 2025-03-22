@@ -13,6 +13,7 @@ next steps/notes:
 
 3/21 update (AF):
 - started exploring options for vacant buildings in CBD and NE. Found a dataset that looks at 311 reports of vacant buildings and plotted it
+  
 notes:
 - currently, it is submitted to the past year. going to continue to explore ways in which we can use this data and ensure the vacant buildings are actually still vacant
 - potentially subsetting the map to zoom in on NE and CBD?
