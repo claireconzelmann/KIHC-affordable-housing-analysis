@@ -1,15 +1,11 @@
 # KIHC-affordable-housing-analysis
-3/21 update (CC):
-- created data exploration.ipynb
-- downloaded data
-- initial data exploration/mapping
-- created 1/2 mile buffers around CTA and Metra stops (ETOD eligible)
-- found overlap of TIFs and buffers
-- found vacant land in those overlapping regions (over 6,000 vacant lots within existing TIFs and that qualify for ETOD)
+3/24 update (CC):
+- created cleaning.py which preps the data to create the maps on the dashboard
+- created dashboard/app.py, which is a shiny dashboard that shows ETOD eligible city-owned lots that are within existing TIF districts
 
 next steps/notes:
 - haven't been able to figure out what major bus corridors qualify for ETOD
-- find vacant buildings in central business district and NE neighborhoods to rehab
+- add buildings that are eligible to rehab in central business district and NE neighborhoods to dashboard
 
 3/21 update (AF):
 - started exploring options for vacant buildings in CBD and NE. Found a dataset that looks at 311 reports of vacant buildings and plotted it
