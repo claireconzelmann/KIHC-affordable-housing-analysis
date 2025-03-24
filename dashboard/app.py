@@ -4,7 +4,6 @@ import os
 import folium
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import tempfile
 
 path = "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis"
 
