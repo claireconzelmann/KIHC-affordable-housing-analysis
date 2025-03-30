@@ -56,7 +56,10 @@ def server(input, output, session):
 
         # Plot layers based on user selection
         if "TIF Districts" in input.layers():
-            tif_districts_gdf.plot(ax=ax, color='purple', label="TIF Districts")
+            tif_districts_gdf.plot(ax=ax, 
+                                   color='purple', 
+                                   label="TIF Districts",
+                                   alpha = 0.8)
 
         if "Half-Mile Buffer (Metra)" in input.layers():
             metra_stops_gdf.to_crs(epsg=4326).plot(ax=ax, 
@@ -66,14 +69,15 @@ def server(input, output, session):
 
         if "Half-Mile Buffer (L Stops)" in input.layers():
             l_stops_gdf.to_crs(epsg=4326).plot(ax=ax, 
-                                               color="lightgreen", 
-                                               alpha=0.8, 
-                                               label="Half-Mile Buffer (L Stops)")
+                                   color="lightgreen", 
+                                   alpha = 0.5,
+                                   label="Half-Mile Buffer (L Stops)")
 
         if "ETOD Eligible City-Owned Land" in input.layers():
             etod_lots_tifs.plot(ax=ax, 
                                 color='blue', 
                                 markersize=2, 
+                                alpha = 0.05,
                                 label="ETOD Eligible City-Owned Land")
 
         # Add legend
