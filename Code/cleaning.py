@@ -4,14 +4,15 @@ from shapely import wkt
 import os
 from shapely.geometry import Point
 import ast  
+import numpy as np
 
 path = "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis"
 
 tif_districts = pd.read_csv(os.path.join(path, "Data/Raw/Boundaries_Tax_Increment_Financing_Districts.csv"))
 city_land = pd.read_csv(os.path.join(path, "Data/Raw/City-Owned_Land_Inventory_20250320.csv"))
 l_stops = pd.read_csv(os.path.join(path, "Data/Raw/CTA_System_Information_List_of_L_Stops.csv"))
-bus_stops_gdf = gpd.read_file(os.path.join(path, "Data/Raw/CTA_BusStops.shp"))
 metra_stops_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraStations.shp"))
+bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Raw/bus_routes.shp"))
 
 #create geopandas objects
 tif_districts["the_geom"] = tif_districts["the_geom"].apply(wkt.loads)
@@ -30,7 +31,7 @@ l_stops["geometry"] = l_stops["Location"].apply(lambda x: Point(x[1], x[0]))
 l_stops_gdf = gpd.GeoDataFrame(l_stops, geometry="geometry")
 l_stops_gdf.set_crs(epsg=4326, inplace=True)
 
-bus_stops_gdf.set_crs(epsg=4326, inplace=True)
+bus_routes_gdf.set_crs(epsg=4326, inplace=True)
 metra_stops_gdf.to_crs(epsg=4326, inplace=True)
 
 #filtering metra stops to chicago only
@@ -45,6 +46,17 @@ l_stops_gdf = l_stops_gdf.to_crs(epsg=3857)
 l_stops_gdf["buffer_half_mile"] = l_stops_gdf.geometry.buffer(804.67)
 l_stops_gdf = l_stops_gdf.to_crs(epsg=4326)
 
+#filter to ETOD eligible bus corridors
+etod_corridors = ["55", "63", "79", "9", "X9", "66", "134", "135", 
+                  "136", "43", "146", "147", "148", "2", "6", "J14", "26","28",
+                  "49", "X49"]
+bus_routes_gdf =  bus_routes_gdf.loc[bus_routes_gdf["route"].isin(etod_corridors)]
+
+#create 1/4 mile buffer around bus corridors (ETOD eligible)
+bus_routes_gdf = bus_routes_gdf.to_crs(epsg=3857)
+bus_routes_gdf["buffer_quarter_mile"] = bus_routes_gdf.geometry.buffer(402.335)
+bus_routes_gdf = bus_routes_gdf.to_crs(epsg=4326)
+
 #find vacant city owned lots within 1/2 buffers of transit stations
 etod_lots_l = gpd.sjoin(city_land_gpd, 
                         l_stops_gdf.set_geometry("buffer_half_mile").to_crs(epsg=4326), 
@@ -54,7 +66,13 @@ etod_lots_metra = gpd.sjoin(city_land_gpd,
                         metra_stops_gdf.set_geometry("buffer_half_mile").to_crs(epsg=4326), 
                         predicate="within")
 
-etod_lots = pd.concat([etod_lots_l, etod_lots_metra], ignore_index=True).drop_duplicates(subset=["ID"])
+#find vacant city owned lots within 1/4 mile buffers of bus corridors
+etod_lots_bus = gpd.sjoin(city_land_gpd, 
+                        bus_routes_gdf.set_geometry("buffer_quarter_mile").to_crs(epsg=4326), 
+                        predicate="within")
+
+etod_lots = pd.concat([etod_lots_l, etod_lots_metra, etod_lots_bus], 
+                      ignore_index=True).drop_duplicates(subset=["ID"])
 etod_lots = etod_lots.drop("index_right", axis=1)
 
 #find etod eligible lots that are within existing TIFs
@@ -65,8 +83,35 @@ etod_lots_tifs = etod_lots_tifs.drop_duplicates(subset=["ID"])
 
 # find land that is still available (hasn't been sold)
 etod_lots_tifs = etod_lots_tifs.loc[etod_lots_tifs["Property Status"] != "Sold"]
+
+#remove zones that cannot have residential units built
+removelist = ["C3", "DS", "M1", "M2", "M3", "PMD", "POS"]
+etod_lots_tifs["flagCol"] = np.where(
+    etod_lots_tifs["Zoning Classification"].str.contains('|'.join(removelist)),1,0)
+etod_lots_tifs = etod_lots_tifs.loc[etod_lots_tifs["flagCol"] != 1]
+etod_lots_tifs = etod_lots_tifs.drop(["flagCol"], axis=1)
+
+#create flag for single family zones
+etod_lots_tifs["sfh_flag"] = np.where(etod_lots_tifs["Zoning Classification"].str.contains("RS-"), 1, 0)
+
+#create broader category for zones
+zone_cats = {"B-Business":"B", 
+             "C-Commercial":"C",
+             "D-Downtown": "D",
+             "PD-Planned Development":"PD",
+             "R-Residential":"R"}
+
+def map_category(item):
+    for key, value in zone_cats.items():
+        if item.startswith(value):  # Check if item starts with dictionary value
+            return key
+    return "Unknown"  # Default value if no match is found
+
+etod_lots_tifs["zone_cat"] = etod_lots_tifs["Zoning Classification"].apply(map_category)
+
+#clean up etod lots file
 etod_lots_tifs = etod_lots_tifs[["ID", "NAME_right", "Address", "Property Status", 
-                                 "Zoning Classification", "geometry"]]
+                                 "Zoning Classification", "zone_cat", "sfh_flag", "geometry"]]
 etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
                                "Zoning Classification": "zoning"}, inplace=True)
 
@@ -74,21 +119,29 @@ etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
 l_stops_gdf = gpd.sjoin(l_stops_gdf.set_geometry("geometry").to_crs(epsg=4326), 
                         tif_districts_gdf, 
                         predicate="within")
-l_stops_gdf = l_stops_gdf.drop_duplicates(subset=["STOP_ID"])
 
 #clean up l file
-l_stops_gdf = l_stops_gdf[["buffer_half_mile", "STATION_DESCRIPTIVE_NAME", "NAME"]]
+l_stops_gdf = l_stops_gdf[["buffer_half_mile", "STATION_DESCRIPTIVE_NAME", "NAME", "STOP_ID"]]
 l_stops_gdf.rename(columns={"STATION_DESCRIPTIVE_NAME": "station_name",
+                                "NAME": "TIF_name"}, inplace=True)
+
+#join tif name to bus routes
+bus_routes_gdf = gpd.sjoin(bus_routes_gdf.set_geometry("geometry").to_crs(epsg=4326), 
+                        tif_districts_gdf, 
+                        predicate="intersects")
+
+#clean up bus file
+bus_routes_gdf = bus_routes_gdf[["buffer_quarter_mile", "route", "name", "NAME"]]
+bus_routes_gdf.rename(columns={"name": "route_name",
                                 "NAME": "TIF_name"}, inplace=True)
 
 #join tif name to metra stops
 metra_stops_gdf = gpd.sjoin(metra_stops_gdf.set_geometry("geometry").to_crs(epsg=4326), 
                         tif_districts_gdf, 
                         predicate="within")
-metra_stops_gdf = metra_stops_gdf.drop_duplicates(subset=["STATION_ID"])
 
 #clean up metra file
-metra_stops_gdf = metra_stops_gdf[["buffer_half_mile", "NAME_left", "NAME_right"]]
+metra_stops_gdf = metra_stops_gdf[["buffer_half_mile", "NAME_left", "NAME_right", "STATION_ID"]]
 metra_stops_gdf.rename(columns={"NAME_right": "TIF_name",
                                 "NAME_left": "station_name"}, inplace=True)
 
@@ -100,4 +153,5 @@ tif_districts_gdf.rename(columns={"NAME": "TIF_name"}, inplace=True)
 tif_districts_gdf.to_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
 metra_stops_gdf.to_file(os.path.join(path, "Data/Processed/metra_stops.shp"))
 l_stops_gdf.to_file(os.path.join(path, "Data/Processed/l_stops.shp"))
+bus_routes_gdf.to_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
 etod_lots_tifs.to_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
