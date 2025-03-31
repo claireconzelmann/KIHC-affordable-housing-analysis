@@ -1,10 +1,10 @@
 # KIHC-affordable-housing-analysis
-3/24 update (CC):
-- created cleaning.py which preps the data to create the maps on the dashboard
-- created dashboard/app.py, which is a shiny dashboard that shows ETOD eligible city-owned lots that are within existing TIF districts
+3/30 update (CC):
+- removed zones that don't allow for residential units from ETOD eligible vacant lots
+- added feature to filter by zone on the shiny app
+- added lots that are ETOD eligible based on bus corridors and added eligible bus corridors to the maps
 
 next steps/notes:
-- haven't been able to figure out what major bus corridors qualify for ETOD
 - add buildings that are eligible to rehab in central business district and NE neighborhoods to dashboard
 
 3/28 update (AF):
