@@ -111,7 +111,8 @@ etod_lots_tifs["zone_cat"] = etod_lots_tifs["Zoning Classification"].apply(map_c
 
 #clean up etod lots file
 etod_lots_tifs = etod_lots_tifs[["ID", "NAME_right", "Address", "Property Status", 
-                                 "Zoning Classification", "zone_cat", "sfh_flag", "geometry"]]
+                                 "Zoning Classification", "zone_cat", "sfh_flag", 
+                                 "Community Area Name", "geometry"]]
 etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
                                "Zoning Classification": "zoning"}, inplace=True)
 
@@ -121,7 +122,8 @@ l_stops_gdf = gpd.sjoin(l_stops_gdf.set_geometry("geometry").to_crs(epsg=4326),
                         predicate="within")
 
 #clean up l file
-l_stops_gdf = l_stops_gdf[["buffer_half_mile", "STATION_DESCRIPTIVE_NAME", "NAME", "STOP_ID"]]
+l_stops_gdf = l_stops_gdf[["STATION_DESCRIPTIVE_NAME", 
+                           "NAME", "STOP_ID", "geometry"]]
 l_stops_gdf.rename(columns={"STATION_DESCRIPTIVE_NAME": "station_name",
                                 "NAME": "TIF_name"}, inplace=True)
 
@@ -131,7 +133,7 @@ bus_routes_gdf = gpd.sjoin(bus_routes_gdf.set_geometry("geometry").to_crs(epsg=4
                         predicate="intersects")
 
 #clean up bus file
-bus_routes_gdf = bus_routes_gdf[["buffer_quarter_mile", "route", "name", "NAME"]]
+bus_routes_gdf = bus_routes_gdf[["route", "name", "NAME", "geometry"]]
 bus_routes_gdf.rename(columns={"name": "route_name",
                                 "NAME": "TIF_name"}, inplace=True)
 
@@ -141,7 +143,7 @@ metra_stops_gdf = gpd.sjoin(metra_stops_gdf.set_geometry("geometry").to_crs(epsg
                         predicate="within")
 
 #clean up metra file
-metra_stops_gdf = metra_stops_gdf[["buffer_half_mile", "NAME_left", "NAME_right", "STATION_ID"]]
+metra_stops_gdf = metra_stops_gdf[["NAME_left", "NAME_right", "STATION_ID", "geometry"]]
 metra_stops_gdf.rename(columns={"NAME_right": "TIF_name",
                                 "NAME_left": "station_name"}, inplace=True)
 
