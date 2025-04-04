@@ -109,10 +109,14 @@ def map_category(item):
 
 etod_lots_tifs["zone_cat"] = etod_lots_tifs["Zoning Classification"].apply(map_category)
 
+#combine squarefootage estimate variables
+etod_lots_tifs["sq_ft"] = np.where((etod_lots_tifs["Sq. Ft."] == 0.0) & 
+                                   (etod_lots_tifs["Square Footage - City Estimate"].notna()), 
+                                   etod_lots_tifs["Square Footage - City Estimate"], etod_lots_tifs["Sq. Ft."])
 #clean up etod lots file
 etod_lots_tifs = etod_lots_tifs[["ID", "NAME_right", "Address", "Property Status", 
                                  "Zoning Classification", "zone_cat", "sfh_flag", 
-                                 "Community Area Name", "geometry"]]
+                                 "Community Area Name", "sq_ft", "geometry"]]
 etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
                                "Zoning Classification": "zoning"}, inplace=True)
 
