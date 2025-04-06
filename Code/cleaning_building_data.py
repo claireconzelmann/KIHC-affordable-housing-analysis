@@ -9,7 +9,6 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 path = os.getcwd()
-
 vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/311_Service_Requests_20250330.csv"))
 neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 sale_buildings = pd.read_csv(os.path.join(path, "Data/Raw/Crexi_Building_Data.csv"))
@@ -39,14 +38,14 @@ assessor_2023 = assessor_2023.rename(columns={"certified_tot_mean": "value_2023"
 #Merging together and creating a difference column
 av_merged = pd.merge(asessor_2000, assessor_2023, on="pri_neigh", how="inner")
 av_merged["difference"] = abs(av_merged["value_2023"] - av_merged["value_2000"])
-av_merged["percent_change"] = av_merged["difference"] / abs(av_merged["value_2000"])
+av_merged["percent_change"] = (av_merged["difference"] / abs(av_merged["value_2000"]))*100
 av_merged = av_merged.rename(columns={'pri_neigh': 'PRI_NEIGH'})
 
 #Merging with neighborhood information to make a GDF with each neighborhood and their level of gentrification 
 merged_neighborhoods = pd.merge(av_merged, neighborhood_gdf, on='PRI_NEIGH', how='left')
 merged_neighborhoods_gdf = gpd.GeoDataFrame(merged_neighborhoods, geometry='geometry')
 merged_neighborhoods_gdf.set_crs('EPSG:4326', allow_override=True, inplace=True)
-
+merged_neighborhoods_gdf = merged_neighborhoods_gdf.rename(columns={'PRI_NEIGH': 'Neigh'})
 ############################### ADDING SQFT AND ZONING DATA ###################################################################
 
 #Adding parcel addresss and square foot data to merge with vacant building and sales data 
@@ -116,6 +115,8 @@ def map_category(item):
 
 sale_buildings_gdf["ZONE_CAT"] = sale_buildings_gdf["ZONE_CLASS"].apply(map_category)
 
+sale_buildings_gdf = sale_buildings_gdf.rename(columns={'PRI_NEIGH': 'Neigh'})
+sale_buildings_gdf = sale_buildings_gdf[['Property Name', 'Zoning', 'Asking Price', 'Address', 'SqFt', 'ZONE_CLASS', 'sfh_flag', 'ZONE_CAT', 'geometry']]
 ############################### VACANT BUILDING DATA CLEANING ###################################################################
 #Loading full vacant dataset 
 vacant_buildings = vacant_buildings.loc[vacant_buildings["DUPLICATE"]==False]
@@ -141,6 +142,9 @@ vacant_buildings_gdf["sfh_flag"] = np.where(vacant_buildings_gdf["ZONE_CLASS"].s
 
 vacant_buildings_gdf["ZONE_CAT"] = vacant_buildings_gdf["ZONE_CLASS"].apply(map_category)
 
+vacant_buildings_gdf = vacant_buildings_gdf.rename(columns={'PRI_NEIGH': 'Neigh'})
+vacant_buildings_gdf = vacant_buildings_gdf[['Address', 'SR_NUMBER', 'LOCATION', 'SqFt', 'ZONE_CLASS', 'sfh_flag', 'ZONE_CAT', 'geometry']]
+
 ##################################### MERGING WITH NEIGHBORHOOD DATA ###########################################################################
 vacant_buildings_gdf.drop_duplicates(subset=['LOCATION'], inplace=True)
 sale_buildings_gdf.drop_duplicates(subset=['Address'], inplace=True)
@@ -153,12 +157,12 @@ vacant_buildings_neighborhood_gdf = gpd.sjoin(vacant_buildings_gdf, merged_neigh
                              how='inner', predicate='intersects')
 
 #Creating a column in neighborhood level dataframe for total square feet available by neighborhood
-sale_buildings_neighborhood_gdf_sqft = sale_buildings_neighborhood_gdf[['PRI_NEIGH', 'SqFt']]
-vacant_buildings_neighborhood_gdf_sqft = vacant_buildings_neighborhood_gdf[['PRI_NEIGH', 'SqFt']]
+sale_buildings_neighborhood_gdf_sqft = sale_buildings_neighborhood_gdf[['Neigh', 'SqFt']]
+vacant_buildings_neighborhood_gdf_sqft = vacant_buildings_neighborhood_gdf[['Neigh', 'SqFt']]
 sqft_neighborhoods = pd.concat([sale_buildings_neighborhood_gdf_sqft, vacant_buildings_neighborhood_gdf_sqft])
 sqft_neighborhoods['SqFt'] = pd.to_numeric(sqft_neighborhoods['SqFt'], errors='coerce')
-total_sqft_neighborhoods = sqft_neighborhoods.groupby('PRI_NEIGH')['SqFt'].sum()
-merged_neighborhoods_gdf = merged_neighborhoods_gdf.merge(total_sqft_neighborhoods, on='PRI_NEIGH', how='left')
+total_sqft_neighborhoods = sqft_neighborhoods.groupby('Neigh')['SqFt'].sum()
+merged_neighborhoods_gdf = merged_neighborhoods_gdf.merge(total_sqft_neighborhoods, on='Neigh', how='left')
 
 
 
@@ -168,10 +172,27 @@ vacant_buildings_neighborhood_gdf.to_file(os.path.join(path, "Data/Processed/vac
 merged_neighborhoods_gdf.to_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
 
 
+##################################### DATA CHECKING ###########################################################################
+n_sale_buildings = sale_buildings_neighborhood_gdf.groupby('Neigh').count().iloc[:, 0]
+n_vacant_buildings = vacant_buildings_neighborhood_gdf.groupby('Neigh').count().iloc[:, 0]
+no_sqft = vacant_buildings_neighborhood_gdf[vacant_buildings_neighborhood_gdf['SqFt'].isna()]
+no_sqft = no_sqft.groupby('Neigh').count().iloc[:, 0]
+n_vacant_buildings = pd.merge(n_vacant_buildings, no_sqft, on='Neigh')
+n_vacant_buildings['percent_missing'] = n_vacant_buildings['Address_y']/n_vacant_buildings['Address_x']
 #Some notes about the data
 #36% of vacant building dataset (cleaned) is missing info on square footage data. I originally removed the City Hall observation,
 #but there isn't really a way to tell if any of the other calls are "jokes". There are 781 observations in the cleaned data.
-#6% of sale buildings dataset (cleaned) is missing infor on square footage data. There are 70 observations in the cleaned dataset.
+#1% of sale buildings dataset (cleaned) is missing info on square footage data. There are 69 observations in the cleaned dataset.
 #The top neighborhoods with the greatest percentage change from 2000 and 2023 are Little Italy (163%), Greektown (161%), United Center (161%), Garfield Park (157%), and Chinatown (130%).
 #The neighborhoods with the greatest number of total square footage are Garfield Park (745888.0), North Lawndale (568076.0), the Loop (209220.0), Englewood (145940.0), and River North (134235.0). Garfield
 #Park has former AllState HQ.
+#est. # of units
+#paying for more area ratio 
+
+
+##To do: 
+#1. add sqft data to vacant buildings 
+####checked data, two other indicators (single vs multi family and type of resident) both wont work
+#2. change map color and make percent change - DONE
+#3. finish dashboard and add to claire's
+#4. calculations for number of units 

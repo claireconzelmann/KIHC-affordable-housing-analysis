@@ -27,8 +27,8 @@ neighborhood_gdf.dissolve().boundary.to_crs(epsg=3857).plot(ax=ax,
                                                             zorder=1)
 merged_neighborhoods_gdf.to_crs(epsg=3857).plot(ax=ax, 
                                                 column="percent_ch", 
-                                                legend_kwds={'label': "Percent Change in Avg. Assed Value from 2000 to 2023", "orientation": "vertical"},
-                                                cmap='Spectral', 
+                                                legend_kwds={'label': "Percent Change in Avg. Assessed Value from 2000 to 2023", "orientation": "vertical"},
+                                                cmap='Reds', 
                                                 legend=True, 
                                                 alpha=0.9)
 vacant_buildings_gdf.to_crs(epsg=3857).plot(ax=ax, 
@@ -52,8 +52,8 @@ plt.savefig(os.path.join(path, "Maps/Chicago_buildings.png"), dpi=200)
 plt.close()
 
 #Subsetting data to Garfield Park
-garfield_park_sale = sale_buildings_gdf[sale_buildings_gdf['PRI_NEIGH'] == 'Garfield Park']
-garfield_park_vacant = vacant_buildings_gdf[vacant_buildings_gdf['PRI_NEIGH'] == 'Garfield Park']
+garfield_park_sale = sale_buildings_gdf[sale_buildings_gdf['Neigh'] == 'Garfield Park']
+garfield_park_vacant = vacant_buildings_gdf[vacant_buildings_gdf['Neigh'] == 'Garfield Park']
 garfield_park = neighborhood_gdf[neighborhood_gdf["PRI_NEIGH"]=="Garfield Park"].to_crs(epsg=3857) 
 xmin, ymin, xmax, ymax  = garfield_park.buffer(600).total_bounds
 
