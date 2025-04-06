@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from branca.element import Element
 
-path = "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis"
+path = os.getcwd()
 
 # Sample geodataframes (replace with actual data)
 tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_districts.shp"))

@@ -1,0 +1,12 @@
+{
+    "https://api.shinyapps.io": {
+        "server_url": "https://api.shinyapps.io",
+        "filename": "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis/dashboard",
+        "app_url": "https://kihc2025.shinyapps.io/my-app/",
+        "app_id": 14440503,
+        "app_guid": null,
+        "title": "my-app",
+        "app_mode": "python-shiny",
+        "app_store_version": 1
+    }
+}
