@@ -27,8 +27,8 @@ neighborhood_gdf.dissolve().boundary.to_crs(epsg=3857).plot(ax=ax,
                                                             zorder=1)
 merged_neighborhoods_gdf.to_crs(epsg=3857).plot(ax=ax, 
                                                 column="percent_ch", 
-                                                legend_kwds={'label': "Percent Change in Avg. Assed Value from 2000 to 2023", "orientation": "vertical"},
-                                                cmap='Spectral', 
+                                                legend_kwds={'label': "Percent Change in Avg. Assessed Value from 2000 to 2023", "orientation": "vertical"},
+                                                cmap='Reds', 
                                                 legend=True, 
                                                 alpha=0.9)
 vacant_buildings_gdf.to_crs(epsg=3857).plot(ax=ax, 

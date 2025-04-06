@@ -9,7 +9,6 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 path = os.getcwd()
-
 vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/311_Service_Requests_20250330.csv"))
 neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 sale_buildings = pd.read_csv(os.path.join(path, "Data/Raw/Crexi_Building_Data.csv"))
