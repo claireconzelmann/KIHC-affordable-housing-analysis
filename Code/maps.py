@@ -43,7 +43,7 @@ merged_lines_bus = linemerge(unary_union(bus_routes_gdf.geometry))
 # Convert back to individual unique LineStrings
 unique_lines_bus = list(merged_lines_bus.geoms) 
 bus_gdf_unique = gpd.GeoDataFrame(geometry=unique_lines_bus, crs=bus_routes_gdf.crs)
-'''
+
 #plot ETOD eligible lots in all of Chicago
 fig, ax = plt.subplots(figsize=(10,10))
 neighborhood_gdf.dissolve().boundary.to_crs(epsg=3857).plot(ax=ax, 
@@ -85,7 +85,7 @@ ax.set_title("ETOD Eligible City Owned Vacant Lots in TIF Districts")
 
 plt.savefig(os.path.join(path, "Maps/ETOD_vacant_lots.png"), dpi=300)
 plt.close()
-'''
+
 # plot zoomed in version of ETOD eligible plots focusing on Englewood
 englewood = neighborhood_gdf.loc[neighborhood_gdf["SEC_NEIGH"]=="ENGLEWOOD"]
 bounding_box = englewood.to_crs(epsg=3857) 
