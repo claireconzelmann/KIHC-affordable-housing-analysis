@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 #reading in files
-path = "/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis"
+path = os.getcwd()
+
 sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
 vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
 merged_neighborhoods_gdf = gpd.read_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
@@ -24,7 +25,12 @@ neighborhood_gdf.dissolve().boundary.to_crs(epsg=3857).plot(ax=ax,
                                                             color='black',
                                                             linewidth=1, 
                                                             zorder=1)
-merged_neighborhoods_gdf.to_crs(epsg=3857).plot(ax=ax, column="percent_ch", cmap='Spectral', legend=True, alpha=0.9)
+merged_neighborhoods_gdf.to_crs(epsg=3857).plot(ax=ax, 
+                                                column="percent_ch", 
+                                                legend_kwds={'label': "Percent Change in Avg. Assed Value from 2000 to 2023", "orientation": "vertical"},
+                                                cmap='Spectral', 
+                                                legend=True, 
+                                                alpha=0.9)
 vacant_buildings_gdf.to_crs(epsg=3857).plot(ax=ax, 
                           color='green', 
                           markersize=2,

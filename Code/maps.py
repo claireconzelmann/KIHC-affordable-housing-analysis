@@ -6,7 +6,8 @@ import contextily as ctx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-path = "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis"
+path = os.getcwd()
+
 tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
 metra_lines_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraLinesshp.shp"))
 l_lines = pd.read_csv(os.path.join(path, "Data/Raw/CTA_l_lines.csv"))

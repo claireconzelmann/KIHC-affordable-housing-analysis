@@ -6,7 +6,7 @@ from shapely.geometry import Point
 import ast  
 import numpy as np
 
-path = "/Users/claireconzelmann/Documents/GitHub/KIHC-affordable-housing-analysis"
+path = os.getcwd()
 
 tif_districts = pd.read_csv(os.path.join(path, "Data/Raw/Boundaries_Tax_Increment_Financing_Districts.csv"))
 city_land = pd.read_csv(os.path.join(path, "Data/Raw/City-Owned_Land_Inventory_20250320.csv"))
