@@ -52,8 +52,8 @@ plt.savefig(os.path.join(path, "Maps/Chicago_buildings.png"), dpi=200)
 plt.close()
 
 #Subsetting data to Garfield Park
-garfield_park_sale = sale_buildings_gdf[sale_buildings_gdf['PRI_NEIGH'] == 'Garfield Park']
-garfield_park_vacant = vacant_buildings_gdf[vacant_buildings_gdf['PRI_NEIGH'] == 'Garfield Park']
+garfield_park_sale = sale_buildings_gdf[sale_buildings_gdf['Neigh'] == 'Garfield Park']
+garfield_park_vacant = vacant_buildings_gdf[vacant_buildings_gdf['Neigh'] == 'Garfield Park']
 garfield_park = neighborhood_gdf[neighborhood_gdf["PRI_NEIGH"]=="Garfield Park"].to_crs(epsg=3857) 
 xmin, ymin, xmax, ymax  = garfield_park.buffer(600).total_bounds
 
