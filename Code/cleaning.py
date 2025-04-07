@@ -5,6 +5,7 @@ import os
 from shapely.geometry import Point
 import ast  
 import numpy as np
+from shapely.ops import unary_union, linemerge
 
 path = os.getcwd()
 
@@ -13,6 +14,10 @@ city_land = pd.read_csv(os.path.join(path, "Data/Raw/City-Owned_Land_Inventory_2
 l_stops = pd.read_csv(os.path.join(path, "Data/Raw/CTA_System_Information_List_of_L_Stops.csv"))
 metra_stops_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraStations.shp"))
 bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Raw/bus_routes.shp"))
+unit_area = pd.read_csv(os.path.join(path, "Data/Raw/zone min unit area.csv"))
+metra_lines_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraLinesshp.shp"))
+l_lines = pd.read_csv(os.path.join(path, "Data/Raw/CTA_l_lines.csv"))
+neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 
 #create geopandas objects
 tif_districts["the_geom"] = tif_districts["the_geom"].apply(wkt.loads)
@@ -120,6 +125,51 @@ etod_lots_tifs = etod_lots_tifs[["ID", "NAME_right", "Address", "Property Status
 etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
                                "Zoning Classification": "zoning"}, inplace=True)
 
+#merge FAR and min unit area info
+etod_lots_tifs.replace({"sq_ft": 0.0}, np.nan, inplace=True)
+etod_lots_tifs = pd.merge(etod_lots_tifs, unit_area, on="zoning", how="left")
+
+#assume 20% of all lot square footage cannot be used for unit calculation
+etod_lots_tifs["sq_ft_rentable"] = etod_lots_tifs["sq_ft"]*0.8
+
+#update sqft based on far
+etod_lots_tifs["sq_ft_far"] = etod_lots_tifs["sq_ft_rentable"]*etod_lots_tifs["FAR"]
+
+#for non residential zoned lots, calculate sq footage above ground floor
+etod_lots_tifs["sq_ft_residential"] = np.where((etod_lots_tifs["zone_cat"]=="B-Business") |
+                                               (etod_lots_tifs["zone_cat"]=="C-Commercial"), 
+                                               etod_lots_tifs["sq_ft_far"] - etod_lots_tifs["sq_ft_rentable"], 
+                                               etod_lots_tifs["sq_ft_far"])
+
+#assume 720 sq. ft. average unit size unless min unit size is larger
+etod_lots_tifs["avg_unit_size"] = np.where(etod_lots_tifs["lot_area_per_unit"] > 720, 
+                                           etod_lots_tifs["lot_area_per_unit"], 720)
+
+# calculate estimate of number of units per lot
+# 0 units if residential eligible sq ft is smaller than minimum unit size
+etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["avg_unit_size"] > etod_lots_tifs["sq_ft_residential"], 0, np.nan)
+
+# divide residential eligible sq ft by average unit size for all others and round down
+etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["n_units"].isna(), 
+                                     np.floor(etod_lots_tifs["sq_ft_residential"]/etod_lots_tifs["avg_unit_size"]), 
+                                     etod_lots_tifs["n_units"])
+
+# 1 unit for single family
+etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["zoning"].isin(["RS-1", "RS-2", "RS-3"]), 1, etod_lots_tifs["n_units"])
+
+# calculate average number of units by zone to impute for lots missing sqft info
+avg_units_zone = etod_lots_tifs.groupby("zoning")["n_units"].mean().reset_index(name="imputed_n_units")
+etod_lots_tifs = pd.merge(etod_lots_tifs, avg_units_zone, on="zoning", how="outer")
+
+# impute
+etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["n_units"].isna(), 
+                                     np.floor(etod_lots_tifs["imputed_n_units"]),
+                                     etod_lots_tifs["n_units"])
+etod_lots_tifs["n_units"] = etod_lots_tifs["n_units"].fillna(value="unknown")
+
+# drop lots if there are no units that can be built
+etod_lots_tifs = etod_lots_tifs[etod_lots_tifs['n_units'] != 0]
+
 #join tif name to l stops
 l_stops_gdf = gpd.sjoin(l_stops_gdf.set_geometry("geometry").to_crs(epsg=4326), 
                         tif_districts_gdf, 
@@ -155,9 +205,42 @@ metra_stops_gdf.rename(columns={"NAME_right": "TIF_name",
 tif_districts_gdf = tif_districts_gdf[["NAME", "USE", "the_geom"]]
 tif_districts_gdf.rename(columns={"NAME": "TIF_name"}, inplace=True)
 
-#export data for app
+# clean data for the app
+neighborhoods["geometry"] = neighborhoods["the_geom"].apply(wkt.loads)
+neighborhood_gdf = gpd.GeoDataFrame(neighborhoods, geometry="geometry")
+neighborhood_gdf = neighborhood_gdf.set_crs("EPSG:4326", inplace=True)
+
+#convert to geopandas and set coordinate system
+l_lines["the_geom"] = l_lines["the_geom"].apply(wkt.loads)
+l_lines_gdf = gpd.GeoDataFrame(l_lines, geometry="the_geom")
+l_lines_gdf = l_lines_gdf.set_crs(epsg=4326, inplace=True)
+
+metra_lines_gdf.to_crs(epsg=4326, inplace=True)
+
+#clip metra lines to chicago extent
+metra_lines_chi_gdf = gpd.clip(metra_lines_gdf, neighborhood_gdf)
+
+# keep unique sections of rail lines
+all_geometries = l_lines_gdf.geometry.tolist() + metra_lines_chi_gdf.geometry.tolist()
+
+# Merge all rail lines into a single unified geometry
+merged_lines = linemerge(unary_union(all_geometries))
+unique_lines = list(merged_lines.geoms)
+rail_gdf_unique = gpd.GeoDataFrame(geometry=unique_lines, crs=l_lines_gdf.crs)
+
+merged_lines_bus = linemerge(unary_union(bus_routes_gdf.geometry))
+# Convert back to individual unique LineStrings
+unique_lines_bus = list(merged_lines_bus.geoms) 
+bus_gdf_unique = gpd.GeoDataFrame(geometry=unique_lines_bus, crs=bus_routes_gdf.crs)
+
+#export data for app and for static plots
 tif_districts_gdf.to_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
+tif_districts_gdf.to_file(os.path.join(path, "dashboard/Data/Processed/tif_districts.shp"))
 metra_stops_gdf.to_file(os.path.join(path, "Data/Processed/metra_stops.shp"))
 l_stops_gdf.to_file(os.path.join(path, "Data/Processed/l_stops.shp"))
-bus_routes_gdf.to_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
-etod_lots_tifs.to_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
+bus_gdf_unique.to_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
+bus_gdf_unique.to_file(os.path.join(path, "dashboard/Data/Processed/bus_routes.shp"))
+etod_lots_tifs.to_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp")) 
+etod_lots_tifs.to_file(os.path.join(path, "dashboard/Data/Processed/etod_lots_tifs.shp")) 
+rail_gdf_unique.to_file(os.path.join(path, "dashboard/Data/Processed/rail_lines.shp")) 
+rail_gdf_unique.to_file(os.path.join(path, "Data/Processed/rail_lines.shp")) 

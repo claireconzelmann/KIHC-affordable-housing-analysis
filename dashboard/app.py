@@ -5,20 +5,15 @@ import folium
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from branca.element import Element
+import pandas as pd
 
 path = os.getcwd()
 
 # Sample geodataframes (replace with actual data)
 tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
-metra_stops_gdf = gpd.read_file(os.path.join(path, "Data/Processed/metra_stops.shp"))
-l_stops_gdf = gpd.read_file(os.path.join(path, "Data/Processed/l_stops.shp"))
+rail_lines_gdf = gpd.read_file(os.path.join(path, "Data/Processed/rail_lines.shp"))
 etod_lots_tifs = gpd.read_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
 bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
-
-#drop duplicates created when spatially joining TIF name to transit data if stop/route is in multiple TIFs
-bus_routes_nodup = bus_routes_gdf.drop_duplicates(subset=["route"])
-l_stops_nodup = l_stops_gdf.drop_duplicates(subset=["STOP_ID"])
-metra_stops_nodup = metra_stops_gdf.drop_duplicates(subset=["STATION_ID"])
 
 app_ui = ui.page_sidebar(
     # Sidebar for layer selection
@@ -27,15 +22,13 @@ app_ui = ui.page_sidebar(
             "layers",
             "Select layers to display:",
             choices=["TIF Districts", 
-                     "Half-Mile Buffer (Metra)", 
-                     "Half-Mile Buffer (L Stops)",
-                     "Quarter-Mile Buffer (Bus Corridors)", 
+                     "Metra and CTA 'L' Lines", 
+                     "ETOD Eligible Bus Corridors", 
                      "ETOD Eligible City-Owned Land"],
             selected=["TIF Districts", 
-                      "Half-Mile Buffer (Metra)",
-                      "Half-Mile Buffer (L Stops)", 
-                      "Quarter-Mile Buffer (Bus Corridors)",
-                      "ETOD Eligible City-Owned Land"]
+                     "Metra and CTA 'L' Lines", 
+                     "ETOD Eligible Bus Corridors", 
+                     "ETOD Eligible City-Owned Land"]
         ),
         ui.input_checkbox_group(
             "zones",
@@ -58,7 +51,7 @@ app_ui = ui.page_sidebar(
     ui.layout_columns(
         # First Column: Map Display
         ui.card(
-            ui.output_plot("full_map_plot"),
+            ui.output_ui("full_map_plot"),
             full_screen=True,
         ),
         
@@ -77,91 +70,71 @@ def server(input, output, session):
     @reactive.calc
     def zone_data():
         df = etod_lots_tifs
-        # Filter based on selected zoning classifications
+        # If zones are selected, filter the data by selected zones
         if input.zones():
             filtered_df = df[df["zone_cat"].isin(input.zones())]
-
+        else:
+            filtered_df = pd.DataFrame()
         return filtered_df
     
     @output
-    @render.plot
+    @render.ui
     def full_map_plot():
         zoned_lots = zone_data()
 
-        fig, ax = plt.subplots()
+        # Set default map center (Chicago)
+        map_center = [41.8781, -87.6298]
 
-        # Plot layers based on user selection
+        # Initialize Folium Map
+        map_ = folium.Map(location=map_center, zoom_start=11, tiles="CartoDB positron")
+
+        # Plot TIF Districts with tooltips
         if "TIF Districts" in input.layers():
-            tif_districts_gdf.plot(ax=ax, 
-                                   color='purple', 
-                                   label="TIF Districts",
-                                   alpha = 0.8)
+            folium.GeoJson(
+                tif_districts_gdf,
+                name="TIF Districts",
+                style_function=lambda x: {"color": "purple", "weight": 1, "fillOpacity": 0.6},
+                tooltip=folium.GeoJsonTooltip(fields=["TIF_name"], aliases=["TIF District:"])  # Tooltip for TIFs
+            ).add_to(map_)
 
-        if "Half-Mile Buffer (Metra)" in input.layers():
-            metra_stops_nodup.to_crs(epsg=4326).plot(ax=ax, 
-                                                   color="pink", 
-                                                   alpha=0.8, 
-                                                   label="Half-Mile Buffer (Metra)")
+        # Plot Metra and CTA 'L' Lines
+        if "Metra and CTA 'L' Lines" in input.layers():
+            folium.GeoJson(
+                rail_lines_gdf.to_crs(epsg=4326),
+                name="Metra and CTA 'L' Lines",
+                style_function=lambda x: {"color": "limegreen", "weight": 2, "fillOpacity": 0.8}
+            ).add_to(map_)
 
-        if "Half-Mile Buffer (L Stops)" in input.layers():
-            l_stops_nodup.to_crs(epsg=4326).plot(ax=ax, 
-                                   color="lightgreen", 
-                                   alpha = 0.5,
-                                   label="Half-Mile Buffer (L Stops)")
-            
-        if "Quarter-Mile Buffer (Bus Corridors)" in input.layers():
-            bus_routes_nodup.to_crs(epsg=4326).plot(ax=ax, 
-                                   color="orange", 
-                                   alpha = 0.5,
-                                   label="Quarter-Mile Buffer (Bus Corridors)")
+        # Plot ETOD Eligible Bus Corridors
+        if "ETOD Eligible Bus Corridors" in input.layers():
+            folium.GeoJson(
+                bus_routes_gdf.to_crs(epsg=4326),
+                name="ETOD Eligible Bus Corridors",
+                style_function=lambda x: {"color": "darkgreen", "weight": 2, "fillOpacity": 0.8}
+            ).add_to(map_)
 
-        if "ETOD Eligible City-Owned Land" in input.layers():
-            zoned_lots.plot(ax=ax, 
-                                color='blue', 
-                                markersize=2, 
-                                alpha = 0.5,
-                                label="ETOD Eligible City-Owned Land")
+        # Plot ETOD Eligible City-Owned Land as skyblue points (No tooltips)
+        if "ETOD Eligible City-Owned Land" in input.layers() and not zoned_lots.empty:
+            for _, row in zoned_lots.iterrows():
+                lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  
 
-        # Add legend
-        legend_patches = []
-        if "TIF Districts" in input.layers():
-            legend_patches.append(mpatches.Patch(color='purple', 
-                                                 label="TIF Districts"))
-            
-        if "Half-Mile Buffer (Metra)" in input.layers():
-            legend_patches.append(mpatches.Patch(color='pink', 
-                                                 label="Half-Mile Buffer (Metra)"))
-            
-        if "Half-Mile Buffer (L Stops)" in input.layers():
-            legend_patches.append(mpatches.Patch(color='lightgreen', 
-                                                 label="Half-Mile Buffer (L Stops)"))
-        
-        if "Quarter-Mile Buffer (Bus Corridors)" in input.layers():
-            legend_patches.append(mpatches.Patch(color='orange', 
-                                                 label="Quarter-Mile Buffer (Bus Corridors)"))
-            
-        if "ETOD Eligible City-Owned Land" in input.layers():
-            legend_patches.append(mpatches.Patch(color='blue', 
-                                                 label="ETOD Eligible City-Owned Land"))
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=3,  # Adjust marker size
+                    color="skyblue",
+                    fill=True,
+                    fill_color="skyblue",
+                    fill_opacity=0.5
+                ).add_to(map_)
+        # Add Layer Control
+        folium.LayerControl().add_to(map_)
 
-        if legend_patches:
-            ax.legend(handles=legend_patches, loc="lower left", fontsize=5, framealpha=0)
-    
-        return fig
+        # Convert Map to HTML
+        return ui.HTML(map_._repr_html_())    
     
     @reactive.calc
     def tif_data():
         df = tif_districts_gdf
-        return df[df["TIF_name"] == input.tif()]
-
-    @reactive.calc
-    def metra_data():
-        df = metra_stops_gdf
-        return df[df["TIF_name"] == input.tif()]
-
-    @reactive.calc
-    def l_data():
-        df = l_stops_gdf
         return df[df["TIF_name"] == input.tif()]
 
     @reactive.calc
@@ -174,19 +147,13 @@ def server(input, output, session):
             filtered_df = filtered_df[filtered_df["zone_cat"].isin(input.zones())]
 
         return filtered_df
-    
-    @reactive.calc
-    def bus_data():
-        df = bus_routes_gdf
-        return df[df["TIF_name"] == input.tif()]
 
     @output
     @render.ui
     def tif_district_plot():
         tif_df = tif_data()
-        metra_df = metra_data()
-        l_df = l_data()
-        bus_df = bus_data()
+        rail_df = rail_lines_gdf
+        bus_df = bus_routes_gdf
         lots_df = lots_data()
 
         # If there's a selected TIF, update map center to its centroid
@@ -195,7 +162,7 @@ def server(input, output, session):
             map_center = [centroid.y, centroid.x]
 
         # Initialize Folium map centered at the TIF district
-        map_ = folium.Map(location=map_center, zoom_start=14)
+        map_ = folium.Map(location=map_center, zoom_start=14, tiles = "CartoDB positron")
         
         # Add layers based on user selection
         if "TIF Districts" in input.layers():
@@ -203,23 +170,17 @@ def server(input, output, session):
                 tif_df.geometry.to_json(),
                 style_function=lambda x: {'color': 'purple', 'weight': 1, 'fillOpacity': 0.5}
             ).add_to(map_)
-        
-        if "Half-Mile Buffer (Metra)" in input.layers():
+                
+        if "Metra and CTA 'L' Lines" in input.layers():
             folium.GeoJson(
-                metra_df.to_crs(epsg=4326).geometry.to_json(),  # Half-mile buffer
-                style_function=lambda x: {'color': 'pink', 'weight': 1, 'fillOpacity': 0.5}
-            ).add_to(map_)
-        
-        if "Half-Mile Buffer (L Stops)" in input.layers():
-            folium.GeoJson(
-                l_df.to_crs(epsg=4326).geometry.to_json(),  # Half-mile buffer
-                style_function=lambda x: {'color': 'lightgreen', 'weight': 1, 'fillOpacity': 0.5}
+                rail_df.to_crs(epsg=4326).geometry.to_json(),
+                style_function=lambda x: {'color': 'limegreen', 'weight': 2, 'fillOpacity': 0.6}
             ).add_to(map_)
 
-        if "Quarter-Mile Buffer (Bus Corridors)" in input.layers():
+        if "ETOD Eligible Bus Corridors" in input.layers():
             folium.GeoJson(
-                bus_df.to_crs(epsg=4326).geometry.to_json(),  # quarter-mile buffer
-                style_function=lambda x: {'color': 'orange', 'weight': 1, 'fillOpacity': 0.5}
+                bus_df.to_crs(epsg=4326).geometry.to_json(),
+                style_function=lambda x: {'color': 'darkgreen', 'weight': 2, 'fillOpacity': 0.6}
             ).add_to(map_)
 
         
@@ -227,7 +188,7 @@ def server(input, output, session):
         if "ETOD Eligible City-Owned Land" in input.layers():
             for idx, row in lots_df.iterrows():
                 lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
-                tooltip_text = f"Zoning: {row['zoning']}<br>Address: {row['Address']}"
+                tooltip_text = f"Zoning: {row['zoning']}<br>Address: {row['Address']}<br>Estimated # Units: {row['n_units']}"
 
                 folium.Marker(
                     location=[lat, lon],
@@ -237,7 +198,7 @@ def server(input, output, session):
                 ).add_to(map_)
 
 
-        # 🔹 Define Legend as Raw HTML (Works 100%)
+        # Define Legend as Raw HTML (Works 100%)
         legend_html = """
         <div style="
             position: fixed;
@@ -247,9 +208,8 @@ def server(input, output, session):
         ">
             <b>Legend</b><br>
             <i style="background: purple; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> TIF Districts <br>
-            <i style="background: pink; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Half-Mile Buffer (Metra) <br>
-            <i style="background: lightgreen; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Half-Mile Buffer (L Stops) <br>
-            <i style="background: orange; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Quarter-Mile Buffer (Bus Corridors) <br>
+            <i style="background: limegreen; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Metra and CTA 'L' Lines <br>
+            <i style="background: darkgreen; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> ETOD Eligible Bus Corridors <br>
             <i style="background: skyblue; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> ETOD Eligible Land <br>
         </div>
         """
