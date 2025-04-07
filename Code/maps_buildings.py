@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 #reading in files
-path = os.getcwd()
+#path = os.getcwd()
+path = "/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis"
+
 
 sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
 vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
@@ -78,7 +80,7 @@ legend = [
 
 ax.legend(handles=legend, loc="upper left", fontsize=6)
 
-ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron)
+ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron, alpha=0.5, zoom=15)
 ax.set_axis_off()
 
 ax.set_xlim([xmin, xmax])

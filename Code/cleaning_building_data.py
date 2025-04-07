@@ -8,7 +8,7 @@ import ast
 import matplotlib.patches as mpatches
 import numpy as np
 
-path = os.getcwd()
+path = '/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis'
 vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/311_Service_Requests_20250330.csv"))
 neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 sale_buildings = pd.read_csv(os.path.join(path, "Data/Raw/Crexi_Building_Data.csv"))
@@ -132,7 +132,6 @@ vacant_buildings_gdf = gpd.GeoDataFrame(vacant_buildings, geometry=gpd.points_fr
 
 vacant_buildings_gdf = gpd.sjoin(vacant_buildings_gdf, zones_gdf, 
                              how='left', predicate='within', lsuffix='_left', rsuffix='_right')
-
 vacant_buildings_gdf["flagCol"] = np.where(
     vacant_buildings_gdf["ZONE_CLASS"].str.contains('|'.join(removelist)),1,0)
 vacant_buildings_gdf = vacant_buildings_gdf.loc[vacant_buildings_gdf["flagCol"] != 1]
@@ -166,10 +165,66 @@ merged_neighborhoods_gdf = merged_neighborhoods_gdf.merge(total_sqft_neighborhoo
 
 
 
+############################### IMPUTING SQUARE FOOT DATA ###################################################################
+
+#using excel sheet to impute missing data for 80 non residential vacant units
+missing_vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/vacant_building_addresses.csv"))
+vacant_buildings_neighborhood_gdf['Calc_Flg']=0
+sale_buildings_neighborhood_gdf['Calc_Flg']=0
+vacant_buildings_neighborhood_gdf= vacant_buildings_neighborhood_gdf.merge(missing_vacant_buildings[['Address', 'SqFt', 'Calc_Flg']], on='Address', how='left', suffixes=('', '_new'))
+vacant_buildings_neighborhood_gdf['SqFt'] = vacant_buildings_neighborhood_gdf['SqFt_new'].combine_first(vacant_buildings_neighborhood_gdf['SqFt'])
+vacant_buildings_neighborhood_gdf = vacant_buildings_neighborhood_gdf.drop(columns=['SqFt_new'])
+vacant_buildings_neighborhood_gdf['Calc_Flg'] = vacant_buildings_neighborhood_gdf['Calc_Flg_new'].combine_first(vacant_buildings_neighborhood_gdf['Calc_Flg'])
+vacant_buildings_neighborhood_gdf = vacant_buildings_neighborhood_gdf.drop(columns=['Calc_Flg_new'])
+
+#using minimum square footage requirement () for residential units (RS)
+sale_buildings_neighborhood_gdf["SqFt"] = np.where(
+    (sale_buildings_neighborhood_gdf["ZONE_CLASS"].isin(["RS-1", "RS-2", "RS-3"])) & 
+    (sale_buildings_neighborhood_gdf["SqFt"].isna()),
+    1200,  
+    sale_buildings_neighborhood_gdf["SqFt"]  #
+)
+
+vacant_buildings_neighborhood_gdf["SqFt"] = np.where(
+    (vacant_buildings_neighborhood_gdf["ZONE_CLASS"].isin(["RS-1", "RS-2", "RS-3"])) & 
+    (vacant_buildings_neighborhood_gdf["SqFt"].isna()),
+    1200,  
+    vacant_buildings_neighborhood_gdf["SqFt"]  #
+)
+
+
+#using lot square footage for RT and RM units
+sale_buildings_neighborhood_gdf["SqFt"] = np.where(
+    (sale_buildings_neighborhood_gdf["ZONE_CLASS"].isin(["RT-4", "RT-3.5", "RT-4A", "RM-5", "RM-6"])) & 
+    (sale_buildings_neighborhood_gdf["SqFt"].isna()),
+    1321,  
+    sale_buildings_neighborhood_gdf["SqFt"]  #
+)
+sale_buildings_neighborhood_gdf["Calc_Flg"] = np.where(
+    sale_buildings_neighborhood_gdf["SqFt"] == 1321,  
+    1,  
+    sale_buildings_neighborhood_gdf.get('Calc_Flg') 
+)
+
+vacant_buildings_neighborhood_gdf["SqFt"] = np.where(
+    (vacant_buildings_neighborhood_gdf["ZONE_CLASS"].isin(["RT-4", "RT-3.5", "RT-4A", "RM-5", "RM-6"])) & 
+    (vacant_buildings_neighborhood_gdf["SqFt"].isna()),
+    1321,  
+    vacant_buildings_neighborhood_gdf["SqFt"]  #
+)
+vacant_buildings_neighborhood_gdf["Calc_Flg"] = np.where(
+    vacant_buildings_neighborhood_gdf["SqFt"] == 1321,  # If SqFt is 1321
+    1,  # Assign 1 to Calc_Flg
+    vacant_buildings_neighborhood_gdf.get('Calc_Flg') 
+)
+
+
 #export data 
 sale_buildings_neighborhood_gdf.to_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
 vacant_buildings_neighborhood_gdf.to_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
 merged_neighborhoods_gdf.to_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
+
+
 
 
 ##################################### DATA CHECKING ###########################################################################
