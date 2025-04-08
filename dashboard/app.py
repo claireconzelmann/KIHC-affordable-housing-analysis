@@ -4,6 +4,7 @@ import os
 import folium
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import branca
 from branca.element import Element
 import pandas as pd
 
@@ -14,9 +15,12 @@ tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_distric
 rail_lines_gdf = gpd.read_file(os.path.join(path, "Data/Processed/rail_lines.shp"))
 etod_lots_tifs = gpd.read_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
 bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
+sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings_lot.shp"))
+vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings_lot.shp"))
+merged_neighborhoods_gdf = gpd.read_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
 
-app_ui = ui.page_sidebar(
-    # Sidebar for layer selection
+
+app_ui_page1 = ui.page_sidebar(
     ui.sidebar(
         ui.input_checkbox_group(
             "layers",
@@ -62,6 +66,56 @@ app_ui = ui.page_sidebar(
             full_screen=True,
         ),
     )
+)
+app_ui_page2 = ui.page_sidebar(
+    # Sidebar for layer selection
+    ui.sidebar(
+        ui.input_checkbox_group(
+            "buildings",
+            "Select what buildings to display:",
+            choices=["Vacant Buildings", 
+                     "Buildings for Sale"],
+            selected=["Vacant Buildings", 
+                     "Buildings for Sale"],
+        ),
+        ui.input_checkbox_group(
+            "zones_2",
+            "Filter by zoning classification:",
+            choices=["B-Business",
+                     "C-Commercial",
+                     "D-Downtown",
+                     "PD-Planned Development",
+                     "R-Residential"],
+            selected=["B-Business",
+                     "C-Commercial",
+                     "D-Downtown",
+                     "PD-Planned Development",
+                     "R-Residential"]
+        )
+
+    ),
+       # Main content layout with two columns
+    ui.layout_columns(
+        # First Column: Map Display
+        ui.card(
+            ui.output_ui("chicago_plot"),
+            full_screen=True,
+        ),
+        
+        # Second Column: Neighborhood Selection and Plot
+        ui.card(
+            ui.input_select(id="neighborhood", label="Choose a Neighborhood:", choices=[]),
+            ui.output_ui("neighborhood_plot"),
+            full_screen=True,
+        ),
+    )
+)
+
+
+app_ui = ui.page_navbar(
+    ui.nav_spacer(),  
+    ui.nav_panel("ETOD Eligible Land", app_ui_page1),
+    ui.nav_panel("Vacant Buildings and Buildings for Sale", app_ui_page2)
 )
 
 # Server
@@ -229,6 +283,197 @@ def server(input, output, session):
         tif_list = etod_lots_tifs["TIF_name"].unique().tolist()
         tif_list = sorted(tif_list)
         ui.update_select("tif", choices=tif_list)
+
+
+# page 2
+    @reactive.calc
+    def zone_data_v():
+        df = vacant_buildings_gdf
+        zones = input.zones_2()  
+        if zones:
+            filtered_df_vacant = df[df["ZONE_CAT"].isin(zones)]
+        else:
+            filtered_df_vacant = pd.DataFrame()
+        return filtered_df_vacant
+
+    
+    @reactive.calc
+    def zone_data_s():
+        df = sale_buildings_gdf
+        zones = input.zones_2()  
+        if zones:
+            filtered_df_sales = df[df["ZONE_CAT"].isin(zones)]
+        else:
+            filtered_df_sales = pd.DataFrame()
+        return filtered_df_sales
+    
+    @output
+    @render.ui
+    def chicago_plot():
+        zoned_vacant_buildings = zone_data_v() 
+        zoned_sale_buildings = zone_data_s() 
+        merged_neighborhoods_gdf['percent_ch'] = merged_neighborhoods_gdf['percent_ch'].apply(lambda x: round(x, 2))
+        colormap = branca.colormap.linear.RdPu_09.scale(merged_neighborhoods_gdf['percent_ch'].min(), merged_neighborhoods_gdf['percent_ch'].max())
+
+        # Set default map center (Chicago)
+        map_center = [41.8781, -87.6298]
+
+        # Initialize Folium Map
+        map_ = folium.Map(location=map_center, zoom_start=11, tiles="CartoDB positron")
+        
+
+        folium.GeoJson(
+            merged_neighborhoods_gdf.to_crs(epsg=4326),
+            name="Neighborhood Percent Change",
+            style_function=lambda x: {
+                'fillColor': colormap(x['properties']['percent_ch']),  # Apply the color map
+                'weight': 1, 
+                'fillOpacity': 0.6,
+                'color': 'black'
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=["Neigh", "percent_ch"], 
+                aliases=["Neighborhood", "Percent Change"],
+                localize=True  # 
+            )
+        ).add_to(map_)
+        colormap.caption = 'Percent Change in Avg. Assessed Value, 2000-2023'
+        colormap.add_to(map_)
+       
+
+       # Return the HTML representation of the map
+        map_html = map_._repr_html_()  # This gets the HTML representation of the map
+        
+        # plotting vacant buildings
+        if "Vacant Buildings" in input.buildings():
+                for _, row in zoned_vacant_buildings.iterrows():
+                    lat, lon = row.geometry.centroid.y, row.geometry.centroid.x
+
+                    folium.CircleMarker(
+                        location=[lat, lon],
+                        popup="Vacant Building",
+                        radius=2,
+                        color="green",
+                        fill=True,
+                        fill_color="green",
+                        fill_opacity=0.9  
+                    ).add_to(map_)
+
+        # plotting buildings for sale
+        if "Buildings for Sale" in input.buildings():
+                for _, row in zoned_sale_buildings.iterrows():
+                    lat, lon = row.geometry.centroid.y, row.geometry.centroid.x
+
+                    folium.CircleMarker(
+                        location=[lat, lon],
+                        popup="Building for Sale",
+                        radius=2,
+                        color="black",
+                        fill=True,
+                        fill_color="black",
+                        fill_opacity=0.9
+                    ).add_to(map_)
+
+        folium.LayerControl().add_to(map_)
+
+        return ui.HTML(map_._repr_html_())
+    
+    @reactive.calc
+    def neigh_data():
+        df = merged_neighborhoods_gdf
+        return df[df["Neigh"] == input.neighborhood()]
+
+    @reactive.calc
+    def sales_data():
+        df = sale_buildings_gdf
+        filtered_df = df[df["Neigh"] == input.neighborhood()]
+        if input.zones_2():
+            filtered_df = filtered_df[filtered_df["ZONE_CAT"].isin(input.zones_2())]
+
+        return filtered_df
+
+    @reactive.calc
+    def vacant_data():
+        df = vacant_buildings_gdf
+        filtered_df = df[df["Neigh"] == input.neighborhood()]
+        if input.zones_2():
+            filtered_df = filtered_df[filtered_df["ZONE_CAT"].isin(input.zones_2())]
+
+        return filtered_df
+    
+
+    @output
+    @render.ui
+    def neighborhood_plot():
+        neigh_df = neigh_data()
+        sales_df = sales_data()
+        vacant_df = vacant_data()
+
+
+        # If there's a selected neighborhood, update map center to its centroid
+        if not neigh_df.empty:
+            centroid = neigh_df.geometry.centroid.unary_union
+            map_center = [centroid.y, centroid.x]
+
+        # Initialize Folium map centered at the neighborhood
+        map_ = folium.Map(location=map_center, zoom_start=14, tiles = "CartoDB positron")
+
+    # Add vacant buildings with Tooltips
+        if "Vacant Buildings" in input.buildings():
+            for idx, row in vacant_df.iterrows():
+                lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
+                tooltip_text = f"Zoning: {row['ZONE_CAT']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
+
+                folium.Marker(
+                    location=[lat, lon],
+                    tooltip=tooltip_text,  # Shows on hover
+                    popup=tooltip_text,  # Click to see full details
+                    icon=folium.Icon(color="green", icon="info-sign")
+                ).add_to(map_)
+    # Add buildings for sale with Tooltips
+        if "Buildings for Sale" in input.buildings():
+            for idx, row in sales_df.iterrows():
+                lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
+                tooltip_text = f"Zoning: {row['ZONE_CAT']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
+
+                folium.Marker(
+                    location=[lat, lon],
+                    tooltip=tooltip_text,  # Shows on hover
+                    popup=tooltip_text,  # Click to see full details
+                    icon=folium.Icon(color="black", icon="info-sign")
+                ).add_to(map_)
+
+        # 🔹 Define Legend as Raw HTML (Works 100%)
+        legend_html = """
+        <div style="
+            position: fixed;
+            bottom: 40px; left: 20px; width: 200px; height: auto;
+            background-color: white; z-index:9999; font-size:14px;
+            padding: 10px; border-radius: 8px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        ">
+            <b>Legend</b><br>
+            <i style="background: green; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Vacant Buildings <br>
+            <i style="background: black; width: 12px; height: 12px; display: inline-block; border-radius: 2px;"></i> Buildings for Sale <br>
+        </div>
+        """
+
+        # 🔹 Use `Element` instead of MacroElement
+        legend = Element(legend_html)
+        map_.get_root().html.add_child(legend)
+
+       # Return the HTML representation of the map
+        map_html = map_._repr_html_()  # This gets the HTML representation of the map
+        
+        # Use ui.html to embed the map directly into the UI
+        return ui.HTML(map_html)
+        
+    @reactive.effect
+    def _():
+        neigh_list = merged_neighborhoods_gdf["Neigh"].unique().tolist()
+        neigh_list = sorted(neigh_list)
+        ui.update_select("neighborhood", choices=neigh_list)
+
+
 
 # Run the app
 app = App(app_ui, server)
