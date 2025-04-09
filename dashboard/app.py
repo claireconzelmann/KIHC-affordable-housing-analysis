@@ -242,7 +242,7 @@ def server(input, output, session):
         if "ETOD Eligible City-Owned Land" in input.layers():
             for idx, row in lots_df.iterrows():
                 lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
-                tooltip_text = f"Zoning: {row['zoning']}<br>Address: {row['Address']}<br>Estimated # Units: {row['n_units']}"
+                tooltip_text = f"Zoning: {row['zoning']}<br>Proposed re-zoning: {row['re_zone']}<br>Address: {row['Address']}<br>Estimated # Units: {row['n_units']}"
 
                 folium.Marker(
                     location=[lat, lon],

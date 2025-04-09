@@ -184,11 +184,13 @@ etod_lots_tifs["n_units"] = etod_lots_tifs["n_units"].fillna(value="unknown")
 # drop lots if there are no units that can be built
 etod_lots_tifs = etod_lots_tifs[etod_lots_tifs['n_units'] != 0]
 
+# clean up file
 etod_lots_tifs.rename(columns={"zoning":"re_zone",
                                "original_zoning": "zoning",
                                "zone_cat":"re_zone_cat",
                                "original_zone_cat": "zone_cat"}, inplace=True)
-
+etod_lots_tifs["re_zone"] = np.where(etod_lots_tifs["re_zone"]==etod_lots_tifs["zoning"], 
+                                     "none", etod_lots_tifs["re_zone"])
 #join tif name to l stops
 l_stops_gdf = gpd.sjoin(l_stops_gdf.set_geometry("geometry").to_crs(epsg=4326), 
                         tif_districts_gdf, 
