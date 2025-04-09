@@ -399,8 +399,7 @@ vacant_buildings_gdf["avg_unit_size"] = np.where(vacant_buildings_gdf["lot_area_
                                            vacant_buildings_gdf["lot_area_per_unit"], 720)
 
 # calculate estimate of number of units per lot
-# 0 units if residential eligible sq ft is smaller than minimum unit size
-sale_buildings_gdf["n_units"] = np.where(sale_buildings_gdf["avg_unit_size"] > sale_buildings_gdf["sq_ft_residential"], 0, np.nan)
+sale_buildings_gdf["n_units"] = np.nan
 
 # divide residential eligible sq ft by average unit size for all others and round down
 sale_buildings_gdf["n_units"] = np.where(sale_buildings_gdf["n_units"].isna(), 
@@ -411,8 +410,7 @@ sale_buildings_gdf["n_units"] = np.where(sale_buildings_gdf["n_units"].isna(),
 sale_buildings_gdf["n_units"] = np.where(sale_buildings_gdf["zoning"].isin(["RS-1", "RS-2", "RS-3"]), 1, sale_buildings_gdf["n_units"])
 
 # calculate estimate of number of units per lot
-# 0 units if residential eligible sq ft is smaller than minimum unit size
-vacant_buildings_gdf["n_units"] = np.where(vacant_buildings_gdf["avg_unit_size"] > vacant_buildings_gdf["sq_ft_residential"], 0, np.nan)
+vacant_buildings_gdf["n_units"] = np.nan
 
 # divide residential eligible sq ft by average unit size for all others and round down
 vacant_buildings_gdf["n_units"] = np.where(vacant_buildings_gdf["n_units"].isna(), 
@@ -426,8 +424,22 @@ print(sale_buildings_gdf["n_units"].sum(skipna=True))
 print(vacant_buildings_gdf["n_units"].sum(skipna=True))
 print(sale_buildings_gdf["n_units"].sum(skipna=True)+vacant_buildings_gdf["n_units"].sum(skipna=True))
 
+sale_buildings_gdf.rename(columns={"zoning":"re_zone",
+                               "original_zoning": "zoning",
+                               "Zoning": "ignore",
+                               "zone_cat":"re_zone_cat",
+                               "original_zoning_cat": "zone_cat"}, inplace=True)
+sale_buildings_gdf["re_zone"] = np.where(sale_buildings_gdf["re_zone"]==sale_buildings_gdf["zoning"], 
+                                     "none", sale_buildings_gdf["re_zone"])
 
+vacant_buildings_gdf.rename(columns={"zoning":"re_zone",
+                               "original_zoning": "zoning",
+                               "zone_cat":"re_zone_cat",
+                               "original_zoning_cat": "zone_cat"}, inplace=True)
+vacant_buildings_gdf["re_zone"] = np.where(vacant_buildings_gdf["re_zone"]==vacant_buildings_gdf["zoning"], 
+                                     "none", vacant_buildings_gdf["re_zone"])
 ############################### SAVING DATA ###################################################################
+
 vacant_buildings_gdf.to_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
 sale_buildings_gdf.to_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
 merged_neighborhoods_gdf.to_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))

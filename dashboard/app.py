@@ -8,8 +8,7 @@ import branca
 from branca.element import Element
 import pandas as pd
 
-path = os.getcwd()
-
+path = '/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis'
 # Sample geodataframes (replace with actual data)
 tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
 rail_lines_gdf = gpd.read_file(os.path.join(path, "Data/Processed/rail_lines.shp"))
@@ -112,12 +111,14 @@ app_ui_page2 = ui.page_sidebar(
     ui.layout_columns(
         # First Column: Map Display
         ui.card(
+            ui.card_header("Explore Vacant and For Sale Buildings in Chicago"),
             ui.output_ui("chicago_plot"),
             full_screen=True,
         ),
         
         # Second Column: Neighborhood Selection and Plot
         ui.card(
+            ui.card_header("Explore Vacant and For Sale Buildings by Neighborhood"),
             ui.input_select(id="neighborhood", label="Choose a Neighborhood:", choices=[]),
             ui.output_ui("neighborhood_plot"),
             full_screen=True,
@@ -127,9 +128,9 @@ app_ui_page2 = ui.page_sidebar(
     ui.layout_column_wrap(
         ui.markdown("# Rehabilitating Vacant and For Sale Buildings"),
         ui.markdown(
-            "The maps above show vacant and for sale buildings in Chicago. The map on the left also displays a measure of neighborhood-level gentrification, highlighting areas most in need of affordable rental units. By utilizing existing building structures, we decrease construction costs and time and gain access to large office buildings no longer in use."),
+            "The maps above show vacant and for sale commercial buildings in Chicago. The map on the left also displays a measure of neighborhood-level gentrification, the percent change in average assessed home value from 2000 to 2023, highlighting areas most in need of affordable rental units. By utilizing existing building structures, we decrease construction costs and time and gain access to large office buildings no longer in use."),
 
-            ui.markdown("Hover over each building in the map on the right to show the estimated number of units that could be built with each rehabilitation development. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal and Crexi Commercial Real Estate."
+            ui.markdown("Hover over each building in the map on the right to show the estimated number of units that could be built with each rehabilitation development. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal and Crexi Commercial Real Estate online database in March 2025."
         ),
         width="100%"
     )
@@ -315,7 +316,7 @@ def server(input, output, session):
         df = vacant_buildings_gdf
         zones = input.zones_2()  
         if zones:
-            filtered_df_vacant = df[df["ZONE_CAT"].isin(zones)]
+            filtered_df_vacant = df[df["zone_cat"].isin(zones)]
         else:
             filtered_df_vacant = pd.DataFrame()
         return filtered_df_vacant
@@ -326,7 +327,7 @@ def server(input, output, session):
         df = sale_buildings_gdf
         zones = input.zones_2()  
         if zones:
-            filtered_df_sales = df[df["ZONE_CAT"].isin(zones)]
+            filtered_df_sales = df[df["zone_cat"].isin(zones)]
         else:
             filtered_df_sales = pd.DataFrame()
         return filtered_df_sales
@@ -412,7 +413,7 @@ def server(input, output, session):
         df = sale_buildings_gdf
         filtered_df = df[df["Neigh"] == input.neighborhood()]
         if input.zones_2():
-            filtered_df = filtered_df[filtered_df["ZONE_CAT"].isin(input.zones_2())]
+            filtered_df = filtered_df[filtered_df["zone_cat"].isin(input.zones_2())]
 
         return filtered_df
 
@@ -421,7 +422,7 @@ def server(input, output, session):
         df = vacant_buildings_gdf
         filtered_df = df[df["Neigh"] == input.neighborhood()]
         if input.zones_2():
-            filtered_df = filtered_df[filtered_df["ZONE_CAT"].isin(input.zones_2())]
+            filtered_df = filtered_df[filtered_df["zone_cat"].isin(input.zones_2())]
 
         return filtered_df
     
@@ -446,7 +447,7 @@ def server(input, output, session):
         if "Vacant Buildings" in input.buildings():
             for idx, row in vacant_df.iterrows():
                 lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
-                tooltip_text = f"Zoning: {row['ZONE_CAT']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
+                tooltip_text = f"Zoning: {row['zoning'] if 'zoning' in row else 'N/A'}<br>Proposed re-zoning: {row['re_zone']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
 
                 folium.Marker(
                     location=[lat, lon],
@@ -458,7 +459,7 @@ def server(input, output, session):
         if "Buildings for Sale" in input.buildings():
             for idx, row in sales_df.iterrows():
                 lat, lon = row.geometry.centroid.y, row.geometry.centroid.x  # Get coordinates
-                tooltip_text = f"Zoning: {row['ZONE_CAT']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
+                tooltip_text = f"Zoning: {row['zoning'] if 'zoning' in row else 'N/A'}<br>Proposed re-zoning: {row['re_zone']}<br>Address: {row['Address']}<br>Number of Units: {row['n_units']}"
 
                 folium.Marker(
                     location=[lat, lon],
