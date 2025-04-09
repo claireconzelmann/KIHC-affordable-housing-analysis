@@ -125,23 +125,39 @@ etod_lots_tifs = etod_lots_tifs[["ID", "NAME_right", "Address", "Property Status
 etod_lots_tifs.rename(columns={"NAME_right": "TIF_name",
                                "Zoning Classification": "zoning"}, inplace=True)
 
-#merge FAR and min unit area info
+# change zone for RS to RT based on proposed policy change for transit oriented development
+etod_lots_tifs["original_zoning"] = etod_lots_tifs["zoning"]
+etod_lots_tifs["original_zone_cat"] = etod_lots_tifs["zone_cat"]
+etod_lots_tifs["zoning"] = np.where(etod_lots_tifs["zoning"].isin(["RS-1", "RS-2", "RS-3"]),
+                                  "RT-4", etod_lots_tifs["zoning"])
+
+# change zone for PD to B-3 based on proposed policy change 
+etod_lots_tifs["zoning"] = np.where(etod_lots_tifs["zoning"].str.startswith("PD"),
+                                  "B1-3", etod_lots_tifs["zoning"])
+etod_lots_tifs["zone_cat"] = np.where(etod_lots_tifs["zone_cat"]=="PD-Planned Development",
+                                  "B-Business", etod_lots_tifs["zoning"])
+
+# merge FAR and min unit area info
 etod_lots_tifs.replace({"sq_ft": 0.0}, np.nan, inplace=True)
 etod_lots_tifs = pd.merge(etod_lots_tifs, unit_area, on="zoning", how="left")
 
-#assume 20% of all lot square footage cannot be used for unit calculation
+# change FAR for B-3/C-3 zones based on Connected Communities
+etod_lots_tifs["FAR"] = np.where(etod_lots_tifs["zoning"].isin(["B1-3", "B2-3", "B3-3", "C1-3", "C2-3", "C3-3"]),
+                                  4, etod_lots_tifs["FAR"])
+
+# assume 20% of all lot square footage cannot be used for unit calculation
 etod_lots_tifs["sq_ft_rentable"] = etod_lots_tifs["sq_ft"]*0.8
 
-#update sqft based on far
+# update sqft based on far
 etod_lots_tifs["sq_ft_far"] = etod_lots_tifs["sq_ft_rentable"]*etod_lots_tifs["FAR"]
 
-#for non residential zoned lots, calculate sq footage above ground floor
+# for non residential zoned lots, calculate sq footage above ground floor
 etod_lots_tifs["sq_ft_residential"] = np.where((etod_lots_tifs["zone_cat"]=="B-Business") |
                                                (etod_lots_tifs["zone_cat"]=="C-Commercial"), 
                                                etod_lots_tifs["sq_ft_far"] - etod_lots_tifs["sq_ft_rentable"], 
                                                etod_lots_tifs["sq_ft_far"])
 
-#assume 720 sq. ft. average unit size unless min unit size is larger
+# assume 720 sq. ft. average unit size unless min unit size is larger
 etod_lots_tifs["avg_unit_size"] = np.where(etod_lots_tifs["lot_area_per_unit"] > 720, 
                                            etod_lots_tifs["lot_area_per_unit"], 720)
 
@@ -154,21 +170,24 @@ etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["n_units"].isna(),
                                      np.floor(etod_lots_tifs["sq_ft_residential"]/etod_lots_tifs["avg_unit_size"]), 
                                      etod_lots_tifs["n_units"])
 
-# 1 unit for single family
-etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["zoning"].isin(["RS-1", "RS-2", "RS-3"]), 1, etod_lots_tifs["n_units"])
-
 # calculate average number of units by zone to impute for lots missing sqft info
-avg_units_zone = etod_lots_tifs.groupby("zoning")["n_units"].mean().reset_index(name="imputed_n_units")
-etod_lots_tifs = pd.merge(etod_lots_tifs, avg_units_zone, on="zoning", how="outer")
+avg_units_zone = etod_lots_tifs.groupby("original_zoning")["n_units"].mean().reset_index(name="imputed_n_units")
+etod_lots_tifs = pd.merge(etod_lots_tifs, avg_units_zone, on="original_zoning", how="outer")
 
 # impute
 etod_lots_tifs["n_units"] = np.where(etod_lots_tifs["n_units"].isna(), 
                                      np.floor(etod_lots_tifs["imputed_n_units"]),
                                      etod_lots_tifs["n_units"])
+
 etod_lots_tifs["n_units"] = etod_lots_tifs["n_units"].fillna(value="unknown")
 
 # drop lots if there are no units that can be built
 etod_lots_tifs = etod_lots_tifs[etod_lots_tifs['n_units'] != 0]
+
+etod_lots_tifs.rename(columns={"zoning":"re_zone",
+                               "original_zoning": "zoning",
+                               "zone_cat":"re_zone_cat",
+                               "original_zone_cat": "zone_cat"}, inplace=True)
 
 #join tif name to l stops
 l_stops_gdf = gpd.sjoin(l_stops_gdf.set_geometry("geometry").to_crs(epsg=4326), 
