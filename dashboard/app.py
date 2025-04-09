@@ -15,8 +15,8 @@ tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_distric
 rail_lines_gdf = gpd.read_file(os.path.join(path, "Data/Processed/rail_lines.shp"))
 etod_lots_tifs = gpd.read_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
 bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Processed/bus_routes.shp"))
-sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings_lot.shp"))
-vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings_lot.shp"))
+sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
+vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
 merged_neighborhoods_gdf = gpd.read_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
 
 
