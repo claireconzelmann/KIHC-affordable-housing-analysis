@@ -135,7 +135,7 @@ etod_lots_tifs["zoning"] = np.where(etod_lots_tifs["zoning"].isin(["RS-1", "RS-2
 etod_lots_tifs["zoning"] = np.where(etod_lots_tifs["zoning"].str.startswith("PD"),
                                   "B1-3", etod_lots_tifs["zoning"])
 etod_lots_tifs["zone_cat"] = np.where(etod_lots_tifs["zone_cat"]=="PD-Planned Development",
-                                  "B-Business", etod_lots_tifs["zoning"])
+                                  "B-Business", etod_lots_tifs["zone_cat"])
 
 # merge FAR and min unit area info
 etod_lots_tifs.replace({"sq_ft": 0.0}, np.nan, inplace=True)

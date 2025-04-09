@@ -55,18 +55,31 @@ app_ui_page1 = ui.page_sidebar(
     ui.layout_columns(
         # First Column: Map Display
         ui.card(
+            ui.card_header("Explore ETOD Eligible City-Owned Vacant Lots in Chicago"),
             ui.output_ui("full_map_plot"),
             full_screen=True,
         ),
         
         # Second Column: TIF District Selection and Plot
         ui.card(
+            ui.card_header("Explore ETOD Eligible City-Owned Vacant Lots by TIF District"),
             ui.input_select(id="tif", label="Choose a TIF District:", choices=[]),
             ui.output_ui("tif_district_plot"),
             full_screen=True,
         ),
+    ),
+
+    ui.layout_column_wrap(
+        ui.markdown("# Leveraging Equitable Transit Oriented Development"),
+        ui.markdown(
+            "The maps above show city-owned vacant lots that are eligible for equitable transit oriented development (ETOD) grant funding and are in Tax Increment Financing (TIF) districts. ETOD eligible means the lots are located within a half mile of 'L' or Metra stops or within a quarter mile of eligible bus corridors. Locating affordable housing developments near transit unlocks funding opportunities and ensures that tenants are connected to other areas of the city. By locating affordable housing developments in TIF districts, we can take advantage of the increasing investments and developments in historically disinvested areas."),
+
+            ui.markdown("Hover over each vacant lot in the map on the right to show the estimated number of units that could be built on each lot. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal."
+        ),
+        width="100%"
     )
 )
+
 app_ui_page2 = ui.page_sidebar(
     # Sidebar for layer selection
     ui.sidebar(
@@ -94,7 +107,8 @@ app_ui_page2 = ui.page_sidebar(
         )
 
     ),
-       # Main content layout with two columns
+
+    # Main content layout with two columns
     ui.layout_columns(
         # First Column: Map Display
         ui.card(
@@ -108,14 +122,24 @@ app_ui_page2 = ui.page_sidebar(
             ui.output_ui("neighborhood_plot"),
             full_screen=True,
         ),
+    ),
+
+    ui.layout_column_wrap(
+        ui.markdown("# Rehabilitating Vacant and For Sale Buildings"),
+        ui.markdown(
+            "The maps above show vacant and for sale buildings in Chicago. The map on the left also displays a measure of neighborhood-level gentrification, highlighting areas most in need of affordable rental units. By utilizing existing building structures, we decrease construction costs and time and gain access to large office buildings no longer in use."),
+
+            ui.markdown("Hover over each building in the map on the right to show the estimated number of units that could be built with each rehabilitation development. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal and Crexi Commercial Real Estate."
+        ),
+        width="100%"
     )
 )
-
 
 app_ui = ui.page_navbar(
     ui.nav_spacer(),  
     ui.nav_panel("ETOD Eligible Land", app_ui_page1),
-    ui.nav_panel("Vacant Buildings and Buildings for Sale", app_ui_page2)
+    ui.nav_panel("Vacant Buildings and Buildings for Sale", app_ui_page2),
+    title="Where Can We Build Affordable Housing in Chicago?",
 )
 
 # Server
