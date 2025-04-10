@@ -182,41 +182,81 @@ vacant_buildings_gdf = vacant_buildings_gdf.drop(columns=['Calc_Flg_new'])
 
 #using minimum square footage requirement for residential units (RS)
 sale_buildings_gdf["SqFt"] = np.where(
-    (sale_buildings_gdf["ZONE_CLASS"].isin(["RS-1", "RS-2", "RS-3"])) & 
+    (sale_buildings_gdf["ZONE_CLASS"].isin(["RS-1"])) & 
     (sale_buildings_gdf["SqFt"].isna()),
-    1200,  
-    sale_buildings_gdf["SqFt"]  #
+    5000,  
+    sale_buildings_gdf["SqFt"]  
 )
 
 vacant_buildings_gdf["SqFt"] = np.where(
-    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RS-1", "RS-2", "RS-3"])) & 
+    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RS-1"])) & 
     (vacant_buildings_gdf["SqFt"].isna()),
-    1200,  
-    vacant_buildings_gdf["SqFt"]  #
+    5000,  
+    vacant_buildings_gdf["SqFt"]  
 )
 
+sale_buildings_gdf["SqFt"] = np.where(
+    (sale_buildings_gdf["ZONE_CLASS"].isin(["RS-2"])) & 
+    (sale_buildings_gdf["SqFt"].isna()),
+    4000,  
+    sale_buildings_gdf["SqFt"]  
+)
 
+vacant_buildings_gdf["SqFt"] = np.where(
+    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RS-2"])) & 
+    (vacant_buildings_gdf["SqFt"].isna()),
+    4000,  
+    vacant_buildings_gdf["SqFt"]  
+)
+
+sale_buildings_gdf["SqFt"] = np.where(
+    (sale_buildings_gdf["ZONE_CLASS"].isin(["RS-3"])) & 
+    (sale_buildings_gdf["SqFt"].isna()),
+    2001,  
+    sale_buildings_gdf["SqFt"]  
+)
+
+vacant_buildings_gdf["SqFt"] = np.where(
+    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RS-3"])) & 
+    (vacant_buildings_gdf["SqFt"].isna()),
+    2001,  
+    vacant_buildings_gdf["SqFt"]  
+)
+
+sale_buildings_gdf["SqFt"] = np.where(
+    (sale_buildings_gdf["ZONE_CLASS"].isin(["RT-3.5"])) & 
+    (sale_buildings_gdf["SqFt"].isna()),
+    2001,  
+    sale_buildings_gdf["SqFt"]  
+)
+
+vacant_buildings_gdf["SqFt"] = np.where(
+    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RT-3.5"])) & 
+    (vacant_buildings_gdf["SqFt"].isna()),
+    2001,  
+    vacant_buildings_gdf["SqFt"]  
+)
 #using lot square footage for RT and RM units (1690*.8) used 1321 as a unique identifier instead of 1320
 sale_buildings_gdf["SqFt"] = np.where(
-    (sale_buildings_gdf["ZONE_CLASS"].isin(["RT-4", "RT-3.5", "RT-4A", "RM-5", "RM-6"])) & 
+    (sale_buildings_gdf["ZONE_CLASS"].isin(["RT-4", "RT-4A", "RM-5", "RM-6"])) & 
     (sale_buildings_gdf["SqFt"].isna()),
     1321,  
     sale_buildings_gdf["SqFt"]  #
 )
 sale_buildings_gdf["Calc_Flg"] = np.where(
-    sale_buildings_gdf["SqFt"] == 1321,  
+    sale_buildings_gdf["SqFt"].isin([1321, 5000, 4000, 2001]),  
     1,  
     sale_buildings_gdf.get('Calc_Flg') 
 )
 
 vacant_buildings_gdf["SqFt"] = np.where(
-    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RT-4", "RT-3.5", "RT-4A", "RM-5", "RM-6"])) & 
+    (vacant_buildings_gdf["ZONE_CLASS"].isin(["RT-4", "RT-4A", "RM-5", "RM-6"])) & 
     (vacant_buildings_gdf["SqFt"].isna()),
     1321,  
     vacant_buildings_gdf["SqFt"]  #
 )
 vacant_buildings_gdf["Calc_Flg"] = np.where(
-    vacant_buildings_gdf["SqFt"] == 1321, 
+    vacant_buildings_gdf["SqFt"].isin([1321, 5000, 4000, 2001]),  
     1,  
     vacant_buildings_gdf.get('Calc_Flg') 
 )
@@ -364,13 +404,18 @@ vacant_buildings_gdf["FAR"] = np.where(vacant_buildings_gdf["zoning"].isin(["B1-
                                   4, vacant_buildings_gdf["FAR"])
 
 #for lots where i calculate the sq footage based off of land square footage, calculate square feet using FAR
-sale_buildings_gdf["sq_ft"] = np.where((sale_buildings_gdf["Calc_Flg"] == 1),  
-                                       sale_buildings_gdf["SqFt"]*sale_buildings_gdf["FAR"],
-                                       sale_buildings_gdf["SqFt"])
-
-vacant_buildings_gdf["sq_ft"] = np.where((vacant_buildings_gdf["Calc_Flg"] == 1),  
-                                       vacant_buildings_gdf["SqFt"]*vacant_buildings_gdf["FAR"],
-                                       vacant_buildings_gdf["SqFt"])
+sale_buildings_gdf["sq_ft"] = np.where(
+    (sale_buildings_gdf["Calc_Flg"] == 1) & 
+    ~sale_buildings_gdf["zoning"].isin(['RS-1', 'RS-2', 'RS-3']),
+    sale_buildings_gdf["SqFt"] * sale_buildings_gdf["FAR"],
+    sale_buildings_gdf["SqFt"]
+)
+vacant_buildings_gdf["sq_ft"] = np.where(
+    (vacant_buildings_gdf["Calc_Flg"] == 1) & 
+    ~vacant_buildings_gdf["zoning"].isin(['RS-1', 'RS-2', 'RS-3']),
+    vacant_buildings_gdf["SqFt"] * vacant_buildings_gdf["FAR"],
+    vacant_buildings_gdf["SqFt"]
+)
 
 vacant_buildings_gdf["sq_ft"] = np.where(
     (vacant_buildings_gdf["original_zoning"].isin(["RS-1", "RS-2", "RS-3"])) & 
