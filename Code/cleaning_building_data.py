@@ -8,7 +8,7 @@ import ast
 import matplotlib.patches as mpatches
 import numpy as np
 
-path = '/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis'
+path = os.getcwd()
 vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/311_Service_Requests_20250330.csv"))
 neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 sale_buildings = pd.read_csv(os.path.join(path, "Data/Raw/Crexi_Building_Data.csv"))
@@ -441,5 +441,8 @@ vacant_buildings_gdf["re_zone"] = np.where(vacant_buildings_gdf["re_zone"]==vaca
 ############################### SAVING DATA ###################################################################
 
 vacant_buildings_gdf.to_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))
+vacant_buildings_gdf.to_file(os.path.join(path, "dashboard/Data/Processed/vacant_buildings.shp"))
 sale_buildings_gdf.to_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
+sale_buildings_gdf.to_file(os.path.join(path, "dashboard/Data/Processed/sale_buildings.shp"))
 merged_neighborhoods_gdf.to_file(os.path.join(path, "Data/Processed/neighborhood_level.shp"))
+merged_neighborhoods_gdf.to_file(os.path.join(path, "dashboard/Data/Processed/neighborhood_level.shp"))

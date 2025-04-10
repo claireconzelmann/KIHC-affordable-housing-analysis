@@ -8,8 +8,8 @@ import branca
 from branca.element import Element
 import pandas as pd
 
-path = '/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis'
-# Sample geodataframes (replace with actual data)
+path = os.getcwd()
+
 tif_districts_gdf = gpd.read_file(os.path.join(path, "Data/Processed/tif_districts.shp"))
 rail_lines_gdf = gpd.read_file(os.path.join(path, "Data/Processed/rail_lines.shp"))
 etod_lots_tifs = gpd.read_file(os.path.join(path, "Data/Processed/etod_lots_tifs.shp"))
@@ -46,7 +46,12 @@ app_ui_page1 = ui.page_sidebar(
                      "D-Downtown",
                      "PD-Planned Development",
                      "R-Residential"]
-        )
+        ),
+        ui.div(
+            ui.markdown("These analyses were conducted as part of a proposal for the 2025 Kreisman Initiative Housing Challenge. Team members: Claire Conzelmann, Alison Filbey, Maryell Abella, and Sarah Kim"),
+            style="margin-top: auto; font-size: 12px; color: black;"
+    )
+
 
     ),
 
@@ -71,9 +76,9 @@ app_ui_page1 = ui.page_sidebar(
     ui.layout_column_wrap(
         ui.markdown("# Leveraging Equitable Transit Oriented Development"),
         ui.markdown(
-            "The maps above show city-owned vacant lots that are eligible for equitable transit oriented development (ETOD) grant funding and are in Tax Increment Financing (TIF) districts. ETOD eligible means the lots are located within a half mile of 'L' or Metra stops or within a quarter mile of eligible bus corridors. Locating affordable housing developments near transit unlocks funding opportunities and ensures that tenants are connected to other areas of the city. By locating affordable housing developments in TIF districts, we can take advantage of the increasing investments and developments in historically disinvested areas."),
+            "The maps above show city-owned vacant lots that are eligible for equitable transit oriented development (ETOD) grant funding and are in Tax Increment Financing (TIF) districts. ETOD eligible means the lots are located within a half mile of 'L' or Metra stops or within a quarter mile of eligible bus corridors. Locating affordable housing developments near transit unlocks funding opportunities and ensures that tenants are connected to jobs and other destinations. By locating affordable housing developments in TIF districts, we ensure that affordability is a central component to the revitalization and redevelopment of historically disinvested communities."),
 
-            ui.markdown("Hover over each vacant lot in the map on the right to show the estimated number of units that could be built on each lot. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal."
+            ui.markdown("Hover over each vacant lot in the map on the right to show the estimated number of units that could be built on each lot. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal in March 2025."
         ),
         width="100%"
     )
@@ -130,7 +135,7 @@ app_ui_page2 = ui.page_sidebar(
         ui.markdown(
             "The maps above show vacant and for sale commercial buildings in Chicago. The map on the left also displays a measure of neighborhood-level gentrification, the percent change in average assessed home value from 2000 to 2023, highlighting areas most in need of affordable rental units. By utilizing existing building structures, we decrease construction costs and time and gain access to large office buildings no longer in use."),
 
-            ui.markdown("Hover over each building in the map on the right to show the estimated number of units that could be built with each rehabilitation development. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal and Crexi Commercial Real Estate online database in March 2025."
+            ui.markdown("Hover over each building in the map on the right to show the estimated number of units that could be built with each rehabilitated development. For more details on the methods used to create these estimates and maps, please see the code repository located [here](https://github.com/claireconzelmann/KIHC-affordable-housing-analysis). The datasets used for this analyses were downloaded from the Chicago Data Portal and Crexi Commercial Real Estate online database in March 2025."
         ),
         width="100%"
     )
