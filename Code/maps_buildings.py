@@ -6,10 +6,7 @@ import contextily as ctx
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-#reading in files
-#path = os.getcwd()
-path = "/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis"
-
+path = os.getcwd()
 
 sale_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/sale_buildings.shp"))
 vacant_buildings_gdf = gpd.read_file(os.path.join(path, "Data/Processed/vacant_buildings.shp"))

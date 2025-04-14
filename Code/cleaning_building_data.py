@@ -1,14 +1,10 @@
 import pandas as pd
 import geopandas as gpd
 from shapely import wkt
-import matplotlib.pyplot as plt
 import os
-from shapely.geometry import Point
-import ast  
-import matplotlib.patches as mpatches
 import numpy as np
 
-path = '/Users/aliso/OneDrive/Documents/KIHC-affordable-housing-analysis'
+path = os.getcwd()
 vacant_buildings = pd.read_csv(os.path.join(path, "Data/Raw/311_Service_Requests_20250330.csv"))
 neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
 sale_buildings = pd.read_csv(os.path.join(path, "Data/Raw/Crexi_Building_Data.csv"))
@@ -260,101 +256,6 @@ vacant_buildings_gdf["Calc_Flg"] = np.where(
     1,  
     vacant_buildings_gdf.get('Calc_Flg') 
 )
-##################################### ETOD FLAG ###########################################################################
-# tif_districts = pd.read_csv(os.path.join(path, "Data/Raw/Boundaries_Tax_Increment_Financing_Districts.csv"))
-# l_stops = pd.read_csv(os.path.join(path, "Data/Raw/CTA_System_Information_List_of_L_Stops.csv"))
-# metra_stops_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraStations.shp"))
-# bus_routes_gdf = gpd.read_file(os.path.join(path, "Data/Raw/bus_routes.shp"))
-# metra_lines_gdf = gpd.read_file(os.path.join(path, "Data/Raw/MetraLinesshp.shp"))
-# l_lines = pd.read_csv(os.path.join(path, "Data/Raw/CTA_l_lines.csv"))
-# neighborhoods = pd.read_csv(os.path.join(path, "Data/Raw/Neighborhoods.csv"))
-
-# #create geopandas objects
-# tif_districts["the_geom"] = tif_districts["the_geom"].apply(wkt.loads)
-# tif_districts_gdf = gpd.GeoDataFrame(tif_districts, geometry="the_geom")
-# tif_districts_gdf = tif_districts_gdf.set_crs(epsg=4326, inplace=True)
-
-# # Convert string representation of tuples of long/lat in lstop data into actual tuples
-# l_stops["Location"] = l_stops["Location"].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
-
-# l_stops["geometry"] = l_stops["Location"].apply(lambda x: Point(x[1], x[0]))
-# l_stops_gdf = gpd.GeoDataFrame(l_stops, geometry="geometry")
-# l_stops_gdf.set_crs(epsg=4326, inplace=True)
-
-# bus_routes_gdf.set_crs(epsg=4326, inplace=True)
-# metra_stops_gdf.to_crs(epsg=4326, inplace=True)
-
-# #filtering metra stops to chicago only
-# metra_stops_gdf = metra_stops_gdf.loc[metra_stops_gdf["MUNICIPALI"]=="Chicago"]
-
-# #create 1/2 mile buffers around CTA and Metra stops (ETOD eligible)
-# metra_stops_gdf = metra_stops_gdf.to_crs(epsg=3857)
-# metra_stops_gdf["buffer_half_mile"] = metra_stops_gdf.geometry.buffer(804.67)
-# metra_stops_gdf = metra_stops_gdf.to_crs(epsg=4326)
-
-# l_stops_gdf = l_stops_gdf.to_crs(epsg=3857)
-# l_stops_gdf["buffer_half_mile"] = l_stops_gdf.geometry.buffer(804.67)
-# l_stops_gdf = l_stops_gdf.to_crs(epsg=4326)
-
-# #filter to ETOD eligible bus corridors
-# etod_corridors = ["55", "63", "79", "9", "X9", "66", "134", "135", 
-#                   "136", "43", "146", "147", "148", "2", "6", "J14", "26","28",
-#                   "49", "X49"]
-# bus_routes_gdf =  bus_routes_gdf.loc[bus_routes_gdf["route"].isin(etod_corridors)]
-
-# #create 1/4 mile buffer around bus corridors (ETOD eligible)
-# bus_routes_gdf = bus_routes_gdf.to_crs(epsg=3857)
-# bus_routes_gdf["buffer_quarter_mile"] = bus_routes_gdf.geometry.buffer(402.335)
-# bus_routes_gdf = bus_routes_gdf.to_crs(epsg=4326)
-
-# #find vacant buildings within 1/2 buffers of transit stations
-# vacant_buildings_gdf = vacant_buildings_gdf.rename(columns={'index_right': 'index_right_renamed'}, errors='ignore')
-
-# etod_lots_l = gpd.sjoin(vacant_buildings_gdf, 
-#                         l_stops_gdf.set_geometry("buffer_half_mile").to_crs(epsg=4326), 
-#                         predicate="within")
-
-# etod_lots_metra = gpd.sjoin(vacant_buildings_gdf, 
-#                         metra_stops_gdf.set_geometry("buffer_half_mile").to_crs(epsg=4326), 
-#                         predicate="within")
-
-# #find vacant buildings within 1/4 mile buffers of bus corridors
-# etod_lots_bus = gpd.sjoin(vacant_buildings_gdf, 
-#                         bus_routes_gdf.set_geometry("buffer_quarter_mile").to_crs(epsg=4326), 
-#                         predicate="within")
-
-# etod_lots = pd.concat([etod_lots_l, etod_lots_metra, etod_lots_bus], 
-#                       ignore_index=True).drop_duplicates(subset=["Address"])
-# etod_lots = etod_lots.drop("index_right", axis=1)
-
-# #find etod eligible buildings that are within existing TIFs
-# etod_lots_tifs = gpd.sjoin(etod_lots, 
-#                         tif_districts_gdf, 
-#                         predicate="within")
-# etod_lots_tifs = etod_lots_tifs.drop_duplicates(subset=["Address"])
-# etod_lots_tifs = etod_lots_tifs[['Address', 'geometry']]
-
-# # merging list of ETOD eligible buildings with larger dataset
-# vacant_buildings_gdf = gpd.sjoin(vacant_buildings_gdf, etod_lots_tifs, how="left", predicate="intersects")
-# #creating indicator and dropping ETOD variables
-# vacant_buildings_gdf['ETOD_ADU_eligible'] = np.where(vacant_buildings_gdf["Address_right"].isna(),
-#                                   0, 1)
-# vacant_buildings_gdf = vacant_buildings_gdf.drop(columns=['Address_right', 'index_right'])
-
-# vacant_buildings_gdf = vacant_buildings_gdf.rename(columns={"Address_left": "Address"})
-
-##################################### ADU FLAG ###########################################################################
-# #reading in info about ADUs
-# adu_districts = pd.read_csv(os.path.join(path, "Data/Raw/Additional_Dwelling_Unit_Areas_20250408.csv"))
-# #creating gdf
-# adu_districts["the_geom"] = adu_districts["the_geom"].apply(wkt.loads)
-# adu_districts_gdf = gpd.GeoDataFrame(adu_districts, geometry="the_geom")
-# adu_districts_gdf = adu_districts_gdf.set_crs(epsg=4326, inplace=True)
-# #merging with vacant buildings data
-# vacant_buildings_gdf = gpd.sjoin(vacant_buildings_gdf, adu_districts_gdf, how="left", predicate="intersects")
-# #creating a flag for units in ADU eligible areas
-# vacant_buildings_gdf['ETOD_ADU_eligible'] = np.where(vacant_buildings_gdf["index_right"].isna(),
-#                                   vacant_buildings_gdf['ETOD_ADU_eligible'], 1)
 ##################################### CHANGING ZONING ###########################################################################
 #renaming
 sale_buildings_gdf = sale_buildings_gdf.rename(columns={"ZONE_CLASS": "zoning"})
@@ -409,7 +310,6 @@ vacant_buildings_gdf["FAR"] = np.where(vacant_buildings_gdf["zoning"].isin(["B1-
                                   4, vacant_buildings_gdf["FAR"])
 
 
-
 #for lots where i calculate the sq footage based off of land square footage, calculate square feet using FAR
 sale_buildings_gdf["sq_ft"] = np.where(
     (sale_buildings_gdf["Calc_Flg"] == 1) ,
@@ -421,11 +321,6 @@ vacant_buildings_gdf["sq_ft"] = np.where(
     vacant_buildings_gdf["SqFt"] * vacant_buildings_gdf["FAR"],
     vacant_buildings_gdf["SqFt"]
 )
-
-# vacant_buildings_gdf["sq_ft"] = np.where(
-#     (vacant_buildings_gdf["original_zoning"].isin(["RS-1", "RS-2", "RS-3"])),
-#     vacant_buildings_gdf["sq_ft"]*1.2, vacant_buildings_gdf["sq_ft"])
-
 
 #for non residential zoned lots, calculate sq footage above ground floor
 sale_buildings_gdf["sq_ft_residential"] = np.where((sale_buildings_gdf["zone_cat"]=="B-Business") |
