@@ -1,17 +1,17 @@
-# KIHC-affordable-housing-analysis
-3/30 update (CC):
-- removed zones that don't allow for residential units from ETOD eligible vacant lots
-- added feature to filter by zone on the shiny app
-- added lots that are ETOD eligible based on bus corridors and added eligible bus corridors to the maps
+## KIHC Affordable Housing Analysis
 
-next steps/notes:
-- add buildings that are eligible to rehab in central business district and NE neighborhoods to dashboard
+This folder contains an analysis conducted for the 2025 Kriesman Initiative Housing Challenge. Our task was to answer the question "Where and how should Chicago build 126,125 affordable housing units in the next 3-5 years." We utilize data from the Chicago Data Portal, the Crexi Commercial Real Estate Database, and the Cook County Assessor's office to answer this question. Our analysis can be replicated by running the code in the below order, or you can visit our dashboard to see our results in an interactive form https://kihc2025.shinyapps.io/chicago-affordable-housing-analysis/
 
-3/28 update (AF):
-- found a data source for commerical buildings sales! this website (https://www.crexi.com/properties/IL/Chicago/Industrial?pageSize=60&mapZoom=10) allows you to download a dataset with listings
-- Using Maryell and Sarah's assessor data, plotted building for sales by difference in assessed home value between 2000 and 2023 for all of Chicago and then the north and central neighborhoods more specifically
-  
-notes:
-- Is this the measure of gentrification we would want? should percent change be used instead?
-- add to dashboard?
+# Team members:
+Claire Conzelmann, Alison Filbey, Maryell Abella, and Sarah Kim.
+
+# Run our code:
+To replicate our analysis, clone our repo and run our code in the following order:
+1. .../Code/cleaning_vacant_lot_data.py
+2. .../Code/cleaning_building_data.py
+3. .../Code/maps_vacant_lots.py
+4. .../Code/maps_vacant_lots.py
+
+
+
 
