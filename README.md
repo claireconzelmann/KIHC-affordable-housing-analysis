@@ -10,7 +10,7 @@ To replicate our analysis, clone our repo and run our code in the following orde
 1. .../Code/cleaning_vacant_lot_data.py
 2. .../Code/cleaning_building_data.py
 3. .../Code/maps_vacant_lots.py
-4. .../Code/maps_vacant_lots.py
+4. .../Code/maps_buildings.py
 
 
 
